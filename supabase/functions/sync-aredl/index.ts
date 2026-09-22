@@ -37,8 +37,8 @@ const BATCH = 500
 const ARTWORK_BUDGET = 25
 
 interface MirrorRow {
+  aredl_id: string
   gd_level_id: number
-  aredl_id: string | null
   name: string
   position: number
   status: string | null
@@ -75,9 +75,17 @@ Deno.serve(async (request) => {
     }
 
     const now = new Date().toISOString()
-    const rows: MirrorRow[] = entries.map((entry) => ({
+
+    // The mirror is keyed on AREDL's uuid, not on gd_level_id: 18 of the ~1,621
+    // entries are the same Geometry Dash level listed twice, once "(Solo)" and
+    // once "(2P)", at very different positions. Keying on gd_level_id makes a
+    // batched upsert fail outright with
+    // `21000: ON CONFLICT DO UPDATE command cannot affect row a second time`.
+    const rows: MirrorRow[] = entries
+      .filter((entry) => typeof entry.id === 'string' && entry.id.length > 0)
+      .map((entry) => ({
+      aredl_id: entry.id!,
       gd_level_id: entry.level_id!,
-      aredl_id: entry.id ?? null,
       name: entry.name?.trim() || `Level ${entry.level_id}`,
       position: entry.position ?? 0,
       status: entry.status ?? null,
@@ -89,27 +97,49 @@ Deno.serve(async (request) => {
       synced_at: now,
     }))
 
+    // Belt and braces: even on the uuid, a duplicate inside one batch would
+    // trip the same error. Upstream should never send one, but "should" is not
+    // a guarantee we get to rely on.
+    const seenIds = new Set<string>()
+    const uniqueRows = rows.filter((row) =>
+      seenIds.has(row.aredl_id) ? false : (seenIds.add(row.aredl_id), true),
+    )
+
     // --- 2. write the mirror -----------------------------------------------
-    for (let i = 0; i < rows.length; i += BATCH) {
+    for (let i = 0; i < uniqueRows.length; i += BATCH) {
       const { error } = await db
         .from('aredl_levels')
-        .upsert(rows.slice(i, i + BATCH), { onConflict: 'gd_level_id' })
+        .upsert(uniqueRows.slice(i, i + BATCH), { onConflict: 'aredl_id' })
       if (error) throw new Error(`Writing the mirror failed: ${error.message}`)
     }
 
-    // Levels that left the list entirely should not linger in the mirror.
-    const keep = new Set(rows.map((row) => row.gd_level_id))
-    const { data: mirrored } = await db.from('aredl_levels').select('gd_level_id')
+    // Entries that left the list entirely should not linger in the mirror.
+    const { data: mirrored } = await db.from('aredl_levels').select('aredl_id')
     const stale = (mirrored ?? [])
-      .map((row) => row.gd_level_id as number)
-      .filter((id) => !keep.has(id))
+      .map((row) => row.aredl_id as string)
+      .filter((id) => !seenIds.has(id))
 
     if (stale.length > 0) {
-      await db.from('aredl_levels').delete().in('gd_level_id', stale)
+      await db.from('aredl_levels').delete().in('aredl_id', stale)
     }
 
     // --- 3. re-stamp the catalogue -----------------------------------------
-    const byGdId = new Map(rows.map((row) => [row.gd_level_id, row]))
+    // One rank per Geometry Dash level, and for a level listed both solo and
+    // two-player that is the solo entry: it is the harder achievement and what
+    // someone logging "I beat this" means. The 2P entry stays in the mirror and
+    // is visible on the /aredl page.
+    const byGdId = new Map<number, MirrorRow>()
+    for (const row of uniqueRows) {
+      const existing = byGdId.get(row.gd_level_id)
+      if (
+        !existing ||
+        (existing.two_player !== row.two_player
+          ? !row.two_player
+          : row.position < existing.position)
+      ) {
+        byGdId.set(row.gd_level_id, row)
+      }
+    }
 
     const { data: levels, error: levelsError } = await db
       .from('levels')
@@ -174,12 +204,14 @@ Deno.serve(async (request) => {
     }
 
     const durationMs = Date.now() - startedAt
-    const message = `Mirrored ${rows.length} AREDL entries; updated ${updated} catalogue levels.`
+    const message =
+      `Mirrored ${uniqueRows.length} AREDL entries ` +
+      `(${byGdId.size} distinct Geometry Dash levels); updated ${updated} catalogue levels.`
 
     await logRun(db, {
       kind: 'sync-aredl',
       status: 'ok',
-      levels_seen: rows.length,
+      levels_seen: uniqueRows.length,
       levels_updated: updated,
       message,
       duration_ms: durationMs,
@@ -187,7 +219,7 @@ Deno.serve(async (request) => {
 
     return json(request, {
       ok: true,
-      levels_seen: rows.length,
+      levels_seen: uniqueRows.length,
       levels_updated: updated,
       removed_from_mirror: stale.length,
       duration_ms: durationMs,

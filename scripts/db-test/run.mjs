@@ -18,14 +18,19 @@
  */
 
 import { execFileSync } from 'node:child_process'
-import { existsSync } from 'node:fs'
+import { existsSync, readdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join, resolve } from 'node:path'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const repoRoot = resolve(here, '..', '..')
 
-const MIGRATION = join(repoRoot, 'supabase', 'migrations', '20260922000000_initial_schema.sql')
+const MIGRATIONS_DIR = join(repoRoot, 'supabase', 'migrations')
+// Every migration, in filename order - the same order Supabase applies them.
+const MIGRATIONS = readdirSync(MIGRATIONS_DIR)
+  .filter((f) => f.endsWith('.sql'))
+  .sort()
+  .map((f) => join(MIGRATIONS_DIR, f))
 const HARNESS = join(here, '00-supabase-harness.sql')
 const TESTS = join(here, '02-rls-tests.sql')
 
@@ -82,8 +87,10 @@ try {
   run(['-d', DB, '-f', HARNESS], { capture: true })
   console.log('harness   applied (auth schema, roles, default privileges)')
 
-  run(['-d', DB, '-f', MIGRATION], { capture: true })
-  console.log('migration applied')
+  for (const migration of MIGRATIONS) {
+    run(['-d', DB, '-f', migration], { capture: true })
+    console.log(`migration applied: ${migration.split(/[\/]/).pop()}`)
+  }
   console.log()
 
   run(['-d', DB, '-f', TESTS])

@@ -43,6 +43,50 @@ async function main() {
   check('rank lookup keys on level_id, not position', index.get(128) === undefined,
     'GD level 128 correctly absent')
 
+  // A Geometry Dash level can be listed twice - once "(Solo)", once "(2P)" -
+  // so level_id is not unique. This asserts against the API directly rather
+  // than against `list`, because `list` may have come from the Supabase mirror,
+  // and what is being checked here is the shape of the upstream data.
+  const upstream = (await (await fetch('https://api.aredl.net/v2/api/aredl/levels')).json()) as Array<{
+    level_id?: number
+    position?: number
+    name?: string
+    two_player?: boolean
+  }>
+  const counts = new Map<number, number>()
+  for (const e of upstream) {
+    if (typeof e.level_id === 'number') counts.set(e.level_id, (counts.get(e.level_id) ?? 0) + 1)
+  }
+  const duplicated = [...counts.entries()].filter(([, n]) => n > 1)
+
+  check('AREDL really does list some levels twice', duplicated.length > 0,
+    `${duplicated.length} of ${counts.size} GD levels appear more than once`)
+
+  const twinId = duplicated[0]?.[0]
+  if (twinId !== undefined) {
+    const variants = upstream
+      .filter((e) => e.level_id === twinId)
+      .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
+    check('the duplicate is a solo/2P pair of the same level',
+      variants.some((v) => v.two_player === true) && variants.some((v) => !v.two_player),
+      variants.map((v) => `#${v.position} ${v.name}`).join('  |  '))
+  }
+
+  // Whatever the source, the index must hold exactly one entry per level id,
+  // and where both variants are present it must be the solo one.
+  const indexed = new Set(list.entries.map((e) => e.gdLevelId))
+  check('the index holds exactly one entry per GD level id',
+    index.size === indexed.size, `${index.size} keys for ${indexed.size} distinct level ids`)
+
+  const twinInList = twinId !== undefined && list.entries.filter((e) => e.gdLevelId === twinId).length > 1
+  if (twinInList) {
+    const chosen = index.get(twinId!)
+    check('the index keeps the solo listing, not the 2P one',
+      chosen?.twoPlayer === false, `chose #${chosen?.position} ${chosen?.name}`)
+  } else {
+    console.log(`SKIP  solo/2P preference - this source (${list.source}) carries one variant only`)
+  }
+
   const bloodlust = index.get(42584142)
   check('Bloodlust found by GD level id', Boolean(bloodlust), bloodlust ? `AREDL #${bloodlust.position}` : 'not found')
 

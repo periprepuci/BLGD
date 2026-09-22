@@ -10,13 +10,23 @@
  *   GET /api/aredl/levels/:id              -> one level
  *   GET /api/aredl/levels/:id/creators     -> full credit list
  *
- * IMPORTANT - a real quirk of that API: `/levels/:id` resolves `:id` as an
- * AREDL uuid **or** a list position **or** a Geometry Dash level id. Asking for
- * `/levels/128` returns the level sitting at position 128, not the level whose
- * Geometry Dash id is 128. Anything that must be keyed on a Geometry Dash id
- * therefore matches against the `level_id` field of the full list, and per-level
- * calls are made with the unambiguous AREDL uuid. Ranks in this app are never
- * derived from that path parameter.
+ * TWO QUIRKS of that list, both found by running against it rather than by
+ * reading the docs:
+ *
+ * 1. `/levels/:id` resolves `:id` as an
+ *    AREDL uuid **or** a list position **or** a Geometry Dash level id. Asking
+ *    for `/levels/128` returns the level sitting at position 128, not the level
+ *    whose Geometry Dash id is 128. Anything keyed on a Geometry Dash id
+ *    therefore matches against the `level_id` field of the full list, and
+ *    per-level calls use the unambiguous AREDL uuid.
+ *
+ * 2. A Geometry Dash level can appear on the list **twice**: 18 of the ~1,621
+ *    entries are listed once as "(Solo)" and once as "(2P)", at very different
+ *    positions, because beating a two-player level alone is much harder.
+ *    `Codependence` is #78 solo and #1035 with two players. So `level_id` is
+ *    not unique, and `getRankIndex` has to choose: it takes the solo listing,
+ *    which is the harder achievement and what someone logging "I beat this"
+ *    almost always means. Both entries stay visible on the /aredl page.
  *
  * Read order:
  *   1. `aredl_levels` in Supabase - our mirror, refreshed by the `sync-aredl`
@@ -162,12 +172,33 @@ export async function getRankedLevels(
   })
 }
 
-/** Index by Geometry Dash level id - the only safe key for rank lookups. */
+/**
+ * Index by Geometry Dash level id.
+ *
+ * `level_id` is not unique on the list (see quirk 2 above), so where a level is
+ * listed both solo and two-player this keeps the **solo** entry - the harder
+ * achievement. Ties beyond that go to the better position.
+ */
 export async function getRankIndex(
   options: { force?: boolean; signal?: AbortSignal } = {},
 ): Promise<Map<number, AredlEntry>> {
   const { entries } = await getRankedLevels(options)
-  return new Map(entries.map((entry) => [entry.gdLevelId, entry]))
+  const index = new Map<number, AredlEntry>()
+
+  for (const entry of entries) {
+    const existing = index.get(entry.gdLevelId)
+    if (!existing) {
+      index.set(entry.gdLevelId, entry)
+      continue
+    }
+    const better =
+      existing.twoPlayer !== entry.twoPlayer
+        ? !entry.twoPlayer
+        : entry.position < existing.position
+    if (better) index.set(entry.gdLevelId, entry)
+  }
+
+  return index
 }
 
 /** Current AREDL entry for a Geometry Dash level, or null when not listed. */
@@ -202,6 +233,8 @@ export async function getLevelDetail(
   if (!entry) return null
 
   return cached(`aredl.detail.${gdLevelId}`, { ttl: TTL.aredlLevel, persist: true }, async () => {
+    // Always the uuid where we have one: the path parameter is ambiguous, and
+    // a level listed twice would otherwise resolve to the wrong variant.
     const key = entry.aredlId ?? String(entry.gdLevelId)
 
     try {

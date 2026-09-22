@@ -123,8 +123,9 @@ export type CompletionUpdate = Partial<
 >
 
 export type AredlLevelRow = {
+  /** AREDL's own id for a list entry. Two entries can share a gd_level_id. */
+  aredl_id: string
   gd_level_id: number
-  aredl_id: string | null
   name: string
   position: number
   status: string | null
@@ -208,6 +209,8 @@ export interface Database {
     Views: {
       leaderboard: { Row: LeaderboardRow; Relationships: [] }
       level_stats: { Row: LevelStatsRow; Relationships: [] }
+      /** One row per Geometry Dash level: the solo listing wins over the 2P one. */
+      aredl_canonical: { Row: AredlLevelRow; Relationships: [] }
     }
     Functions: {
       is_admin: { Args: { uid?: string }; Returns: boolean }

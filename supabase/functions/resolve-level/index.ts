@@ -41,11 +41,18 @@ async function resolveAredlEntry(
   db: ReturnType<typeof serviceClient>,
   gdLevelId: number,
 ): Promise<{ entry: AredlRawLevel | null; source: 'mirror' | 'direct' | 'unavailable' }> {
-  const { data, error } = await db
+  // Not `.maybeSingle()`: a level listed both solo and two-player has two rows
+  // here, and maybeSingle would error on the second. Ordering picks the solo
+  // entry, which is the harder achievement and the rank the app stamps.
+  const { data: rows, error } = await db
     .from('aredl_levels')
     .select('*')
     .eq('gd_level_id', gdLevelId)
-    .maybeSingle()
+    .order('two_player', { ascending: true })
+    .order('position', { ascending: true })
+    .limit(1)
+
+  const data = rows?.[0] ?? null
 
   if (!error && data) {
     return {
@@ -69,16 +76,21 @@ async function resolveAredlEntry(
   // have been synced - only the live list can tell those apart.
   const { count } = await db
     .from('aredl_levels')
-    .select('gd_level_id', { count: 'exact', head: true })
+    .select('aredl_id', { count: 'exact', head: true })
 
   if ((count ?? 0) > 0) return { entry: null, source: 'mirror' }
 
   try {
     const list = await fetchAredlList()
-    return {
-      entry: list.find((item) => item.level_id === gdLevelId) ?? null,
-      source: 'direct',
-    }
+    // Same rule as the mirror: solo first, then the better position.
+    const matches = list
+      .filter((item) => item.level_id === gdLevelId)
+      .sort((a, b) =>
+        Boolean(a.two_player) !== Boolean(b.two_player)
+          ? Number(Boolean(a.two_player)) - Number(Boolean(b.two_player))
+          : (a.position ?? 0) - (b.position ?? 0),
+      )
+    return { entry: matches[0] ?? null, source: 'direct' }
   } catch {
     return { entry: null, source: 'unavailable' }
   }

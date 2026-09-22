@@ -263,9 +263,33 @@ select test.check(
 select test.check(
   'the service_role (Edge Functions) CAN write the mirror',
   'service_role', null,
-  $$insert into public.aredl_levels (gd_level_id, aredl_id, name, position, status)
-    values (42584142, null, 'Bloodlust', 255, 'MainList')$$,
+  $$insert into public.aredl_levels (aredl_id, gd_level_id, name, position, status)
+    values ('cccccccc-0000-4000-8000-000000000001', 42584142, 'Bloodlust', 255, 'MainList')$$,
   'ok'
+);
+
+-- 18 real AREDL entries are the same Geometry Dash level listed twice, once
+-- "(Solo)" and once "(2P)". The mirror has to hold both.
+select test.check(
+  'the mirror accepts a solo and a 2P listing of the same GD level',
+  'service_role', null,
+  $$insert into public.aredl_levels (aredl_id, gd_level_id, name, position, two_player) values
+      ('cccccccc-0000-4000-8000-000000000002', 62556400, 'Codependence (Solo)',   78, false),
+      ('cccccccc-0000-4000-8000-000000000003', 62556400, 'Codependence (2P)',   1035, true)$$,
+  'ok'
+);
+
+select test.expect_true(
+  'aredl_canonical collapses them to the solo listing',
+  'anon', null,
+  $$select count(*) = 1 and min(position) = 78 and bool_and(not two_player)
+    from public.aredl_canonical where gd_level_id = 62556400$$
+);
+
+select test.expect_true(
+  'both variants are still visible on the full list',
+  'anon', null,
+  $$select count(*) = 2 from public.aredl_levels where gd_level_id = 62556400$$
 );
 
 select test.check(
