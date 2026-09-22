@@ -2,11 +2,15 @@ import { AlertCircle, CheckCircle2, Plus } from 'lucide-react'
 
 import { Button, ButtonLink } from '@/components/ui/Button'
 import { cn } from '@/utils/cn'
-import { pluralize } from '@/utils/format'
+import { finiteOrNull, pluralize } from '@/utils/format'
 
 export interface MissingDemonsNoticeProps {
-  /** Beaten in Geometry Dash, from the provider. Null when no account is linked. */
-  inGame: number | null
+  /**
+   * Beaten in Geometry Dash, from the provider. Null when no account is linked,
+   * and typed `unknown` because a database that has not run the latest
+   * migration omits the column entirely, delivering `undefined`.
+   */
+  inGame: unknown
   /** Logged on this site. */
   logged: number
   /** Whose profile this is, for the third-person wording. */
@@ -36,9 +40,10 @@ export function MissingDemonsNotice({
   onAdd,
   className,
 }: MissingDemonsNoticeProps) {
-  if (inGame === null) return null
+  const beaten = finiteOrNull(inGame)
+  if (beaten === null) return null
 
-  const missing = Math.max(0, inGame - logged)
+  const missing = Math.max(0, beaten - logged)
 
   // Beaten fewer in game than logged here. Happens when someone logs a demon
   // Geometry Dash has not credited yet, or an unrated one. Not worth nagging
@@ -56,7 +61,7 @@ export function MissingDemonsNotice({
         <p className="text-sm text-ink-300">
           {isOwnProfile ? 'You have' : `${displayName} has`} logged{' '}
           <span className="font-semibold text-ink-100">
-            all {inGame} Extreme {pluralize(inGame, 'Demon')}
+            all {beaten} Extreme {pluralize(beaten, 'Demon')}
           </span>{' '}
           beaten in Geometry Dash.
         </p>
@@ -80,7 +85,7 @@ export function MissingDemonsNotice({
           </p>
           <p className="mt-0.5 text-sm leading-relaxed text-ink-400">
             Geometry Dash says {isOwnProfile ? 'you have' : 'they have'} beaten{' '}
-            <span className="text-ink-200">{inGame}</span>, and{' '}
+            <span className="text-ink-200">{beaten}</span>, and{' '}
             <span className="text-ink-200">{logged}</span>{' '}
             {logged === 1 ? 'is' : 'are'} logged here.
           </p>

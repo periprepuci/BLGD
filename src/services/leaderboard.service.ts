@@ -11,6 +11,7 @@
 import { describeError, requireSupabase } from '@/lib/supabase'
 import type { LeaderboardRow } from '@/types/database'
 import type { LeaderboardMetric } from '@/types/domain'
+import { finiteOrNull } from '@/utils/format'
 
 export interface LeaderboardEntry extends LeaderboardRow {
   rank: number
@@ -53,16 +54,18 @@ export const METRICS: Record<
 
 function valueFor(row: LeaderboardRow, metric: LeaderboardMetric): number | null {
   switch (metric) {
+    // finiteOrNull throughout: a database behind on migrations omits these
+    // columns, and Number(undefined) is NaN, which sorts and renders as junk.
     case 'points':
-      return row.aredl_points_total === null ? null : Number(row.aredl_points_total)
+      return finiteOrNull(row.aredl_points_total)
     case 'completions':
-      return row.completions_count
+      return finiteOrNull(row.completions_count) ?? 0
     case 'enjoyment':
-      return row.avg_enjoyment === null ? null : Number(row.avg_enjoyment)
+      return finiteOrNull(row.avg_enjoyment)
     case 'difficulty':
-      return row.avg_difficulty === null ? null : Number(row.avg_difficulty)
+      return finiteOrNull(row.avg_difficulty)
     case 'stars':
-      return row.gd_stars
+      return finiteOrNull(row.gd_stars)
   }
 }
 

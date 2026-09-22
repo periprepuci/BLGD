@@ -16,7 +16,7 @@ import * as completionsService from '@/services/completions.service'
 import * as leaderboardService from '@/services/leaderboard.service'
 import { displayNameOf } from '@/services/profiles.service'
 import type { CompletionWithLevel } from '@/types/domain'
-import { formatNumber, formatRating, ordinal } from '@/utils/format'
+import { finiteOrNull, formatNumber, formatRating, ordinal } from '@/utils/format'
 
 export function DashboardPage() {
   const { user, profile } = useAuth()
@@ -35,6 +35,8 @@ export function DashboardPage() {
 
   const stats = completionsService.summarise(completions.data ?? [])
   const myRank = leaderboardService.findRank(board.data ?? [], profile?.id)
+
+  const beatenInGame = finiteOrNull(profile?.gd_extreme_demons)
 
   const extremeLogged = (completions.data ?? []).filter(
     (c) => c.level.difficulty === 'Extreme Demon' || c.level.aredl_rank !== null,
@@ -102,20 +104,18 @@ export function DashboardPage() {
           <StatTile
             label="Extreme Demons"
             value={
-              profile?.gd_extreme_demons == null ? (
+              beatenInGame === null ? (
                 stats.total
               ) : (
                 <>
                   {stats.total}
                   <span className="text-lg font-medium text-ink-500">
-                    {' / '}
-                    {profile.gd_extreme_demons}
-                  </span>
+{` / ${beatenInGame}`}</span>
                 </>
               )
             }
             detail={
-              profile?.gd_extreme_demons == null
+              beatenInGame === null
                 ? stats.withVideo > 0
                   ? `${stats.withVideo} with video`
                   : 'logged here'

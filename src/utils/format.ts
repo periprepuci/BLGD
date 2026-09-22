@@ -2,6 +2,21 @@
 
 const numberFormat = new Intl.NumberFormat('en-US')
 
+/**
+ * A usable number, or null.
+ *
+ * Guards against a column the database does not have yet. PostgREST omits an
+ * unknown column from `select *`, so the field arrives as `undefined` rather
+ * than null - and `undefined === null` is false, which is how a pending
+ * migration turned into "NaN Extreme Demons missing" on screen. Anything that
+ * is not a finite number is treated as "no value" rather than as arithmetic.
+ */
+export function finiteOrNull(value: unknown): number | null {
+  if (value === null || value === undefined || value === '') return null
+  const n = typeof value === 'number' ? value : Number(value)
+  return Number.isFinite(n) ? n : null
+}
+
 export function formatNumber(value: number | null | undefined): string {
   if (value === null || value === undefined || Number.isNaN(value)) return '—'
   return numberFormat.format(value)

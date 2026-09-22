@@ -15,7 +15,7 @@ import * as leaderboardService from '@/services/leaderboard.service'
 import { avatarUrl, displayNameOf } from '@/services/profiles.service'
 import type { LeaderboardMetric } from '@/types/domain'
 import { cn } from '@/utils/cn'
-import { formatNumber, formatRating, pluralize } from '@/utils/format'
+import { finiteOrNull, formatNumber, formatRating, pluralize } from '@/utils/format'
 
 const OPTIONS: { value: LeaderboardMetric; label: string; title: string }[] = [
   { value: 'points', label: 'Points', title: leaderboardService.METRICS.points.description },
@@ -24,6 +24,11 @@ const OPTIONS: { value: LeaderboardMetric; label: string; title: string }[] = [
   { value: 'difficulty', label: 'Difficulty', title: leaderboardService.METRICS.difficulty.description },
   { value: 'stars', label: 'Stars', title: leaderboardService.METRICS.stars.description },
 ]
+
+/** Points, or 0 when the column is absent on an un-migrated database. */
+function pointsOf(entry: { aredl_points_total: number }): number {
+  return finiteOrNull(entry.aredl_points_total) ?? 0
+}
 
 function metricDisplay(metric: LeaderboardMetric, value: number | null): string {
   if (value === null) return '—'
@@ -130,8 +135,8 @@ export function LeaderboardPage() {
                           {entry.completions_count} {pluralize(entry.completions_count, 'demon')}
                         </span>
                       )}
-                      {metric !== 'points' && entry.aredl_points_total > 0 && (
-                        <span>{formatNumber(Math.round(Number(entry.aredl_points_total)))} pts</span>
+                      {metric !== 'points' && pointsOf(entry) > 0 && (
+                        <span>{formatNumber(Math.round(pointsOf(entry)))} pts</span>
                       )}
                       {metric === 'points' && entry.best_aredl_rank !== null && (
                         <span>hardest #{entry.best_aredl_rank}</span>

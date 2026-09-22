@@ -5,7 +5,13 @@ import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { StatTile } from '@/components/ui/StatTile'
 import type { ProfileRow } from '@/types/database'
-import { formatNumber, formatRating, formatRelative, ordinal } from '@/utils/format'
+import {
+  finiteOrNull,
+  formatNumber,
+  formatRating,
+  formatRelative,
+  ordinal,
+} from '@/utils/format'
 import { avatarUrl, displayNameOf } from '@/services/profiles.service'
 
 export interface ProfileHeaderProps {
@@ -19,7 +25,7 @@ export interface ProfileHeaderProps {
   /** Position on the "Extreme Demons completed" leaderboard, when known. */
   leaderboardRank?: number | null
   /** Sum of AREDL's point value across this member's completions. */
-  aredlPoints?: number | null
+  aredlPoints?: unknown
   isOwnProfile?: boolean
   onRefreshStats?: () => void
   refreshing?: boolean
@@ -36,6 +42,10 @@ export function ProfileHeader({
 }: ProfileHeaderProps) {
   const name = displayNameOf(profile)
   const linked = Boolean(profile.gd_username)
+  // finiteOrNull, not a null check: a database behind on migrations omits
+  // these columns entirely and they arrive as undefined.
+  const beatenInGame = finiteOrNull(profile.gd_extreme_demons)
+  const points = finiteOrNull(aredlPoints)
 
   return (
     <header className="panel overflow-hidden">
@@ -80,13 +90,13 @@ export function ProfileHeader({
                 <span className="text-ink-500">No Geometry Dash account linked</span>
               )}
 
-              {aredlPoints !== null && aredlPoints > 0 && (
+              {points !== null && points > 0 && (
                 <span
                   className="inline-flex items-center gap-1.5 font-semibold text-brand-300"
                   title="Sum of AREDL's own point value across every logged demon"
                 >
                   <Trophy className="h-4 w-4" aria-hidden="true" />
-                  {formatNumber(Math.round(aredlPoints))}
+                  {formatNumber(Math.round(points))}
                   <span className="font-normal text-ink-500">AREDL points</span>
                 </span>
               )}
@@ -124,20 +134,17 @@ export function ProfileHeader({
           <StatTile
             label="Extreme Demons"
             value={
-              profile.gd_extreme_demons === null ? (
+              beatenInGame === null ? (
                 stats.total
               ) : (
                 <>
                   {stats.total}
-                  <span className="text-lg font-medium text-ink-500">
-                    {' / '}
-                    {profile.gd_extreme_demons}
-                  </span>
+                  <span className="text-lg font-medium text-ink-500">{` / ${beatenInGame}`}</span>
                 </>
               )
             }
             detail={
-              profile.gd_extreme_demons === null
+              beatenInGame === null
                 ? isOwnProfile
                   ? 'logged by you'
                   : 'logged here'
