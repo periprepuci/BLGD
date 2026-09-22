@@ -38,6 +38,17 @@ const headers = {
 const started = Date.now()
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
+/**
+ * Rounds to the precision the database actually stores.
+ *
+ * `aredl_points` and `gddl_tier` are numeric(_,2), so Postgres rounds whatever
+ * we send. AREDL publishes gddl_tier at full float precision - 23.97669491525424
+ * for Bloodbath, stored as 23.98 - so comparing the raw value against the
+ * stored one marks every level as changed on every run, forever.
+ */
+const round2 = (value) =>
+  value === null || value === undefined ? null : Math.round(Number(value) * 100) / 100
+
 async function rest(path, init = {}) {
   const response = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
     ...init,
@@ -160,8 +171,8 @@ async function syncAredl() {
     const changed =
       nextRank !== level.aredl_rank ||
       nextStatus !== level.aredl_status ||
-      Number(entry?.points ?? 0) !== Number(level.aredl_points ?? 0) ||
-      Number(entry?.gddl_tier ?? 0) !== Number(level.gddl_tier ?? 0)
+      round2(entry?.points ?? null) !== round2(level.aredl_points) ||
+      round2(entry?.gddl_tier ?? null) !== round2(level.gddl_tier)
 
     if (!changed) continue
 

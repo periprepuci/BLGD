@@ -36,6 +36,18 @@ const BATCH = 500
  */
 const ARTWORK_BUDGET = 25
 
+/**
+ * Rounds to the precision the database actually stores.
+ *
+ * `aredl_points` and `gddl_tier` are numeric(_,2). AREDL publishes gddl_tier at
+ * full float precision (23.97669491525424, stored as 23.98), so comparing the
+ * raw value against the stored one would mark every level as changed on every
+ * run.
+ */
+function round2(value: number | null | undefined): number | null {
+  return value === null || value === undefined ? null : Math.round(Number(value) * 100) / 100
+}
+
 interface MirrorRow {
   aredl_id: string
   gd_level_id: number
@@ -160,8 +172,8 @@ Deno.serve(async (request) => {
       const rankChanged =
         nextRank !== level.aredl_rank ||
         nextStatus !== level.aredl_status ||
-        (entry?.points ?? null) !== level.aredl_points ||
-        (entry?.gddl_tier ?? null) !== level.gddl_tier
+        round2(entry?.points ?? null) !== round2(level.aredl_points as number | null) ||
+        round2(entry?.gddl_tier ?? null) !== round2(level.gddl_tier as number | null)
 
       // Levels without artwork get their verification video looked up, within
       // this run's budget. Everything else is a pure rank refresh.
