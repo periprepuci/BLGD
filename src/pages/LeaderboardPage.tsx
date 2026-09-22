@@ -18,6 +18,7 @@ import { cn } from '@/utils/cn'
 import { formatNumber, formatRating, pluralize } from '@/utils/format'
 
 const OPTIONS: { value: LeaderboardMetric; label: string; title: string }[] = [
+  { value: 'points', label: 'Points', title: leaderboardService.METRICS.points.description },
   { value: 'completions', label: 'Demons', title: leaderboardService.METRICS.completions.description },
   { value: 'enjoyment', label: 'Enjoyment', title: leaderboardService.METRICS.enjoyment.description },
   { value: 'difficulty', label: 'Difficulty', title: leaderboardService.METRICS.difficulty.description },
@@ -27,13 +28,17 @@ const OPTIONS: { value: LeaderboardMetric; label: string; title: string }[] = [
 function metricDisplay(metric: LeaderboardMetric, value: number | null): string {
   if (value === null) return '—'
   if (metric === 'enjoyment' || metric === 'difficulty') return formatRating(value)
+  // Points come back as numeric(12,2); the decimals are noise on a leaderboard.
+  if (metric === 'points') return formatNumber(Math.round(value))
   return formatNumber(value)
 }
 
 export function LeaderboardPage() {
   const { profile } = useAuth()
   const { dataVersion } = useAppContext()
-  const [metric, setMetric] = useState<LeaderboardMetric>('completions')
+  // Points first: it is the one that answers "who is best at the game", which
+  // counting demons does not.
+  const [metric, setMetric] = useState<LeaderboardMetric>('points')
 
   const board = useAsync(() => leaderboardService.getLeaderboard(metric), [metric, dataVersion])
 
@@ -125,6 +130,12 @@ export function LeaderboardPage() {
                           {entry.completions_count} {pluralize(entry.completions_count, 'demon')}
                         </span>
                       )}
+                      {metric !== 'points' && entry.aredl_points_total > 0 && (
+                        <span>{formatNumber(Math.round(Number(entry.aredl_points_total)))} pts</span>
+                      )}
+                      {metric === 'points' && entry.best_aredl_rank !== null && (
+                        <span>hardest #{entry.best_aredl_rank}</span>
+                      )}
                     </p>
                   </div>
 
@@ -151,9 +162,11 @@ export function LeaderboardPage() {
       {entries.length > 0 && (
         <p className="mt-4 flex items-center gap-2 text-xs text-ink-500">
           <Trophy className="h-3.5 w-3.5" aria-hidden="true" />
-          {metric === 'completions'
-            ? 'Every member is listed, including those at zero.'
-            : `Members with no ${meta.label.toLowerCase()} data are left out rather than ranked last on a blank.`}
+          {metric === 'points'
+            ? "AREDL's own point value per level, summed. Nothing here is weighted or blended by this site."
+            : metric === 'completions'
+              ? 'Every member is listed, including those at zero.'
+              : `Members with no ${meta.label.toLowerCase()} data are left out rather than ranked last on a blank.`}
         </p>
       )}
     </Page>

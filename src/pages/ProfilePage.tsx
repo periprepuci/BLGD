@@ -50,6 +50,7 @@ export function ProfilePage() {
   )
 
   const board = useAsync(() => leaderboardService.getLeaderboard('completions'), [dataVersion])
+  const points = useAsync(() => leaderboardService.getLeaderboard('points'), [dataVersion])
 
   /**
    * Opening a profile refreshes its Geometry Dash stats, but only when they are
@@ -182,6 +183,9 @@ export function ProfilePage() {
           profile={profile}
           stats={stats}
           leaderboardRank={rank?.rank ?? null}
+          aredlPoints={
+            leaderboardService.findRank(points.data ?? [], profile.id)?.metricValue ?? null
+          }
           isOwnProfile={isOwnProfile}
           onRefreshStats={onRefreshStats}
           refreshing={refreshStats.pending}

@@ -146,7 +146,12 @@ export type CompletionSortKey =
 
 export type SortDirection = 'asc' | 'desc'
 
-export type LeaderboardMetric = 'completions' | 'enjoyment' | 'difficulty' | 'stars'
+export type LeaderboardMetric =
+  | 'points'
+  | 'completions'
+  | 'enjoyment'
+  | 'difficulty'
+  | 'stars'
 
 export interface SortState {
   key: CompletionSortKey

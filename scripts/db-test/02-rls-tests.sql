@@ -553,6 +553,62 @@ select test.expect_true(
 );
 
 -- ===========================================================================
+-- 9c. AREDL points, summed
+-- ===========================================================================
+-- Fixtures: Bloodlust #255 and Society #1. Give them AREDL's own point values
+-- and check the sum, rather than a number this site invented.
+
+update public.levels set aredl_points = 372.00 where gd_level_id = 42584142;
+update public.levels set aredl_points = 5000.00 where gd_level_id = 127323087;
+
+select test.expect_true(
+  'a member''s points are the sum of their levels',
+  'anon', null,
+  $$select aredl_points_total = 5372.00
+    from public.leaderboard where username = 'alice'$$
+);
+
+select test.expect_true(
+  'and someone who beat only the easier one scores less',
+  'anon', null,
+  $$select aredl_points_total = 372.00
+    from public.leaderboard where username = 'bob'$$
+);
+
+-- Zero is a real answer here, unlike the "missing demons" figure.
+select test.expect_true(
+  'a member with nothing logged scores 0, not null',
+  'anon', null,
+  $$select aredl_points_total = 0
+    from public.leaderboard where username = 'boss'$$
+);
+
+-- A level off the list has no points; sum() must skip it, not blank the total.
+select test.check(
+  'a level with no AREDL points can exist',
+  'authenticated', '22222222-2222-4222-8222-222222222222',
+  $$insert into public.levels (id, gd_level_id, name, creator)
+    values ('aaaaaaaa-0000-4000-8000-000000000009', 999111222, 'Unrated thing', 'nobody')$$,
+  'ok'
+);
+
+select test.check(
+  'and logging it does not wipe the total',
+  'authenticated', '22222222-2222-4222-8222-222222222222',
+  $$insert into public.completions (user_id, level_id, enjoyment, difficulty)
+    values ('22222222-2222-4222-8222-222222222222',
+            'aaaaaaaa-0000-4000-8000-000000000009', 5, 5)$$,
+  'ok'
+);
+
+select test.expect_true(
+  'bob still has exactly his ranked points',
+  'anon', null,
+  $$select aredl_points_total = 372.00
+    from public.leaderboard where username = 'bob'$$
+);
+
+-- ===========================================================================
 -- 10. Admins editing other members' completions
 -- ===========================================================================
 -- Deliberately last: these edits change bob's ratings, and the leaderboard

@@ -22,6 +22,13 @@ export const METRICS: Record<
   LeaderboardMetric,
   { label: string; description: string; unit: string }
 > = {
+  points: {
+    label: 'AREDL points',
+    description:
+      "Sum of AREDL's own point value for every demon logged here. Harder levels are " +
+      'worth more, so this rewards difficulty rather than volume.',
+    unit: 'points',
+  },
   completions: {
     label: 'Extreme Demons',
     description: 'Number of Extreme Demons logged on this site.',
@@ -46,6 +53,8 @@ export const METRICS: Record<
 
 function valueFor(row: LeaderboardRow, metric: LeaderboardMetric): number | null {
   switch (metric) {
+    case 'points':
+      return row.aredl_points_total === null ? null : Number(row.aredl_points_total)
     case 'completions':
       return row.completions_count
     case 'enjoyment':
@@ -67,11 +76,13 @@ export async function getLeaderboard(metric: LeaderboardMetric): Promise<Leaderb
 
   return rows
     .map((row) => ({ row, metricValue: valueFor(row, metric) }))
-    // "completions" keeps everyone, including members at zero - being at the
-    // start of the list is real information. Every other metric needs data to
-    // mean anything.
+    // "completions" and "points" keep everyone, including members at zero -
+    // being at the start of the list is real information, and zero points is a
+    // real answer. The averages and the star count need data to mean anything.
     .filter(({ metricValue }) =>
-      metric === 'completions' ? true : metricValue !== null && metricValue > 0,
+      metric === 'completions' || metric === 'points'
+        ? true
+        : metricValue !== null && metricValue > 0,
     )
     .sort((a, b) => {
       const diff = (b.metricValue ?? 0) - (a.metricValue ?? 0)

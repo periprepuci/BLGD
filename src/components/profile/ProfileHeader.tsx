@@ -18,6 +18,8 @@ export interface ProfileHeaderProps {
   }
   /** Position on the "Extreme Demons completed" leaderboard, when known. */
   leaderboardRank?: number | null
+  /** Sum of AREDL's point value across this member's completions. */
+  aredlPoints?: number | null
   isOwnProfile?: boolean
   onRefreshStats?: () => void
   refreshing?: boolean
@@ -27,6 +29,7 @@ export function ProfileHeader({
   profile,
   stats,
   leaderboardRank,
+  aredlPoints = null,
   isOwnProfile = false,
   onRefreshStats,
   refreshing = false,
@@ -75,6 +78,17 @@ export function ProfileHeader({
                 </span>
               ) : (
                 <span className="text-ink-500">No Geometry Dash account linked</span>
+              )}
+
+              {aredlPoints !== null && aredlPoints > 0 && (
+                <span
+                  className="inline-flex items-center gap-1.5 font-semibold text-brand-300"
+                  title="Sum of AREDL's own point value across every logged demon"
+                >
+                  <Trophy className="h-4 w-4" aria-hidden="true" />
+                  {formatNumber(Math.round(aredlPoints))}
+                  <span className="font-normal text-ink-500">AREDL points</span>
+                </span>
               )}
 
               {linked && profile.gd_username !== profile.username && (

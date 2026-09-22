@@ -161,6 +161,8 @@ export type LeaderboardRow = {
   last_completion_at: string | null
   /** Beaten in game but not logged here. NULL when no account is linked. */
   missing_extreme_demons: number | null
+  /** Sum of AREDL's own point value across every logged level. */
+  aredl_points_total: number
 }
 
 export type LevelStatsRow = {
