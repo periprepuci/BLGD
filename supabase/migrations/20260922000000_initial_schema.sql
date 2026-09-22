@@ -37,21 +37,6 @@ begin
 end;
 $fn$;
 
--- SECURITY DEFINER so that policies on profiles can ask "is this user an
--- admin?" without re-entering the policies on profiles (which would recurse).
-create or replace function public.is_admin(uid uuid default auth.uid())
-returns boolean
-language sql
-stable
-security definer
-set search_path = public
-as $fn$
-  select coalesce((select p.is_admin from public.profiles p where p.id = uid), false);
-$fn$;
-
-revoke all on function public.is_admin(uuid) from public;
-grant execute on function public.is_admin(uuid) to authenticated, anon;
-
 -- ---------------------------------------------------------------------------
 -- profiles
 -- ---------------------------------------------------------------------------
@@ -94,6 +79,25 @@ drop trigger if exists profiles_set_updated_at on public.profiles;
 create trigger profiles_set_updated_at
   before update on public.profiles
   for each row execute function public.set_updated_at();
+
+-- SECURITY DEFINER so that policies on profiles can ask "is this user an
+-- admin?" without re-entering the policies on profiles (which would recurse).
+--
+-- Defined here rather than with the other helpers at the top of the file: it is
+-- `language sql`, so Postgres parses and validates its body at CREATE time and
+-- the profiles table has to exist first.
+create or replace function public.is_admin(uid uuid default auth.uid())
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $fn$
+  select coalesce((select p.is_admin from public.profiles p where p.id = uid), false);
+$fn$;
+
+revoke all on function public.is_admin(uuid) from public;
+grant execute on function public.is_admin(uuid) to authenticated, anon;
 
 -- ---------------------------------------------------------------------------
 -- levels  (shared catalogue - one row per Geometry Dash level)

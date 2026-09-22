@@ -756,27 +756,85 @@ Defaults to 390 / 768 / 1024 / 1440 / 1920 px against `http://localhost:4173`.
 > silently lays the page out wider and then crops the screenshot — which looks
 > exactly like an overflow bug that is not there.
 
+### `npm run test:db`
+
+The one that matters. Creates a throwaway database, applies a Supabase-alike
+bootstrap (the `auth` schema, `auth.uid()`, the three roles, and Supabase's
+default table privileges), applies **the real migration unmodified**, and then
+asserts 47 properties of the security model — including every claim §6 makes.
+
+Needs only a reachable PostgreSQL. No Supabase, no Docker, no network:
+
+```bash
+PGHOST=localhost PGPORT=5432 PGUSER=postgres PGPASSWORD=... npm run test:db
+```
+
+```
+PASS  alice CANNOT log a completion in bob's name      42501: new row violates RLS policy
+PASS  alice CANNOT edit bob's ratings                  0 rows
+PASS  alice CANNOT delete bob's completion             0 rows
+PASS  alice CANNOT reassign her own completion to bob  42501: new row violates RLS policy
+PASS  alice CANNOT make herself an admin               42501: permission denied for table profiles
+PASS  a signed-in user CANNOT write the AREDL mirror   42501: permission denied
+PASS  anon CANNOT insert a completion                  42501: permission denied
+PASS  a 7.3 rating is rejected (0.5 steps only)        23514: check constraint violated
+PASS  an admin CAN delete a level                      1 rows
+PASS  the leaderboard view has security_invoker on     got true
+...
+ passed | failed | total
+     47 |      0 |    47
+```
+
+Note the two different refusal shapes, because they come from different
+mechanisms and it is worth knowing which is which:
+
+- **`42501: new row violates row-level security policy`** — an RLS `WITH CHECK`
+  clause refused the *resulting* row. This is what stops alice writing bob's name
+  into a completion.
+- **`0 rows`** — an RLS `USING` clause filtered the row out before the statement
+  saw it. An `UPDATE` or `DELETE` aimed at someone else's row does not error; it
+  quietly affects nothing. That is correct behaviour, and it is why the tests
+  assert on the row count rather than just "no exception".
+- **`42501: permission denied for table`** — a column or table `GRANT`, not a
+  policy. This is what stops `is_admin` being self-granted, since policies work
+  per row and cannot restrict a column.
+
+> This suite caught a real bug on its first run: `public.is_admin()` was defined
+> before `public.profiles` existed. Being `language sql`, Postgres validates the
+> body at `CREATE` time, so the migration aborted with *relation
+> "public.profiles" does not exist*. It would have failed on a real Supabase
+> project too, at step 5 of this README. The function now lives immediately after
+> the table, with a comment saying why.
+
 ### What has and has not been verified
 
-Verified on this machine:
+Verified on a real machine:
 
 - `npm run build` and `tsc -b` clean, no TypeScript errors.
-- All 29 smoke checks passing against the live AREDL and Geometry Dash APIs.
+- 29/29 smoke checks against the live AREDL and Geometry Dash APIs.
+- **47/47 database assertions**, including: a member cannot insert, edit, delete
+  or re-own another member's completion; cannot grant themselves admin; cannot
+  write the AREDL mirror; cannot read the sync log; anonymous visitors can read
+  but not write anything; the rating scale is enforced by the database; deleting
+  an account cascades; both views run with `security_invoker`.
 - Every public route rendered in a real headless browser: `/`, `/#/levels`,
   `/#/leaderboard`, `/#/aredl` (with ~1,621 live AREDL entries), `/#/login`,
   `/#/register`, and the 404 page.
-- `/#/dashboard` correctly redirecting an unauthenticated visitor to `/#/login`.
+- `/#/dashboard` redirecting an unauthenticated visitor to `/#/login`.
 - No horizontal overflow at 390 / 768 / 1024 / 1440 / 1920 px.
 - No `service_role` key, sync secret, or JWT in the built bundle. (The only
   occurrence of the string "service_role" is the setup screen's warning telling
   you not to put it in a `VITE_` variable.)
+- The GitHub Actions workflow running end to end on a clean runner — checkout,
+  `npm ci`, and then failing exactly where it should when the Supabase secrets
+  are absent.
 
-**Not verified end-to-end**, because it needs a live Supabase project and this
-machine has no Docker for a local stack: sign-up, sign-in, password reset,
-inserting a completion, and the RLS policies actually rejecting a cross-user
-write. Those paths are written and typecheck, and the SQL is the standard
-`auth.uid()` pattern — but nobody has watched them run. Create a project, run
-the migration, and try to edit somebody else's completion before you trust it.
+**Still not exercised**, because it needs Supabase's own Auth service (GoTrue)
+rather than just Postgres: the HTTP sign-up, sign-in and password-reset round
+trips, and PostgREST translating a real JWT into the `request.jwt.claims` GUC.
+The database half of that boundary is now tested against the same GUC PostgREST
+sets, so what remains untested is the token plumbing, not the policies.
+
 
 ---
 

@@ -10,7 +10,8 @@
     "typecheck": "tsc -b",
     "preview": "vite preview",
     "smoke": "vite build --config scripts/smoke/vite.config.ts && node scripts/smoke/run.mjs",
-    "check:responsive": "node scripts/responsive/check.mjs"
+    "check:responsive": "node scripts/responsive/check.mjs",
+    "test:db": "node scripts/db-test/run.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.47.10",
