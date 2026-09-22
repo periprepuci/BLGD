@@ -234,11 +234,16 @@ and are worth reading; the summary:
 | --- | --- | --- | --- | --- |
 | `profiles` | everyone | own row | own row (admins: any) | own row, or admin |
 | `levels` | everyone | signed in | signed in | admin only |
-| `completions` | everyone | **own only** | **own only** | own, or admin |
+| `completions` | everyone | **own only** | own, or admin | own, or admin |
 | `aredl_levels` | everyone | — | — | — |
 | `sync_runs` | admin | — | — | — |
 
 Four things worth calling out:
+
+**Ownership is immutable.** `completions.user_id` and `level_id` sit outside
+the column grant, so once a completion exists nobody can change who it belongs
+to or which level it points at — not the owner, not an admin. Admins can fix a
+rating, a video link or a date on anyone's entry; they cannot quietly move it.
 
 **Completions are pinned to `auth.uid()` on both sides.** Each policy has a
 `USING` clause (which rows the statement may touch) *and* a `WITH CHECK` clause
@@ -460,22 +465,75 @@ The app works without them. What you lose:
 
 ---
 
-## 13. Keeping AREDL up to date
+## 13. Keeping data fresh
 
-Ranks refresh at four points:
+Two moving parts age: the AREDL ranking, and each member's Geometry Dash stats.
+There are two independent ways to refresh them, and **you only need one**.
 
-1. **When a level is added** — resolved live at that moment.
-2. **When a level page is opened** and you press *Refresh*.
-3. **From the admin page** — *Sync AREDL now*, which re-stamps every level.
-4. **On a schedule** — pick one:
-   - `.github/workflows/sync-aredl.yml` (a GitHub Action, no extensions needed), or
-   - `supabase/optional-scheduled-sync.sql` (pg_cron + pg_net, entirely inside
-     Supabase; stores the secret in Vault rather than inline in the job).
+### Option A — scheduled GitHub Action (no Supabase CLI)
 
-You do not need both. Every run is logged to `public.sync_runs` and shown on the
-admin page, so you can see what actually happened rather than assuming.
+`.github/workflows/nightly-sync.yml` runs `scripts/sync/nightly.mjs` at 04:17
+UTC daily. It mirrors the AREDL list, re-stamps every catalogue level's rank,
+and refreshes every member's stars, moons and demons.
 
-Between syncs, the browser caches the ranking for 30 minutes
+Setup is one secret and one variable:
+
+```bash
+gh variable set SUPABASE_URL --body https://<project-ref>.supabase.co
+gh secret set SUPABASE_SECRET_KEY        # prompts; nothing is echoed or logged
+```
+
+The secret key bypasses RLS, which is exactly why it lives in GitHub Actions
+secrets and nowhere else — never in the repo, never in a `VITE_` variable.
+Revoke and reissue it from *Project Settings → API Keys* if it is ever exposed.
+
+Run it by hand any time from *Actions → Nightly sync → Run workflow*, or
+locally:
+
+```bash
+SUPABASE_URL=... SUPABASE_SECRET_KEY=... npm run sync
+```
+
+### Option B — Supabase Edge Functions
+
+`sync-aredl` does the AREDL half on a schedule of its own, and
+`sync-gd-profile` additionally lets **any** signed-in member refresh **any**
+member's stats on demand, by opening their profile. That last part is the one
+thing Option A cannot do, because a browser cannot write another member's row.
+
+```bash
+npx supabase login
+npx supabase link --project-ref <project-ref>
+npx supabase secrets set SYNC_SECRET=$(openssl rand -hex 32)
+npx supabase functions deploy sync-aredl
+npx supabase functions deploy resolve-level
+npx supabase functions deploy sync-gd-profile
+```
+
+Then schedule it with either `.github/workflows/sync-aredl.yml` or
+`supabase/optional-scheduled-sync.sql` (pg_cron).
+
+### What happens without either
+
+Ranks still refresh when a level is added, when someone presses *Refresh* on a
+level page, and when an admin runs a sync from `/admin`. Stats refresh when you
+open your own profile, or anyone's if you are an admin. Nothing goes stale
+silently — every page says when its data was last synced.
+
+### Who can refresh whose stats
+
+| | own profile | another member's |
+| --- | --- | --- |
+| member | yes | no |
+| admin | yes | yes |
+| nightly Action (Option A) | everyone, automatically | everyone, automatically |
+| `sync-gd-profile` (Option B) | everyone, on demand | everyone, on demand |
+
+The member/admin rows are enforced by Postgres, not by the UI: the
+"admins update any profile" policy permits the row and the `gd_*` columns are
+inside the grant. Asserted in the database suite.
+
+Between syncs the browser caches the ranking for 30 minutes
 (`src/lib/cache.ts`), and identical concurrent requests are coalesced into one
 fetch.
 

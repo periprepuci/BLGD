@@ -10,7 +10,7 @@ import type { CompletionRow, LevelRow } from '@/types/database'
 export interface AppOutletContext {
   /** Opens the add/edit modal. Pages call this from their own buttons. */
   openAddDemon: (options?: {
-    editing?: { completion: CompletionRow; level: LevelRow }
+    editing?: { completion: CompletionRow; level: LevelRow; ownerName?: string }
     gdLevelId?: number
   }) => void
   /** Bumped every time a completion is created, edited or deleted. */
@@ -34,7 +34,11 @@ export function AppLayout() {
   const { user } = useAuth()
 
   const [modalOpen, setModalOpen] = useState(false)
-  const [editing, setEditing] = useState<{ completion: CompletionRow; level: LevelRow } | null>(null)
+  const [editing, setEditing] = useState<{
+    completion: CompletionRow
+    level: LevelRow
+    ownerName?: string
+  } | null>(null)
   const [presetLevelId, setPresetLevelId] = useState<number | null>(null)
   const [dataVersion, setDataVersion] = useState(0)
 

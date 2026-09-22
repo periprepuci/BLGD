@@ -30,8 +30,12 @@ export interface AddDemonModalProps {
   open: boolean
   onClose: () => void
   userId: string
-  /** Present when editing: the level is fixed and only ratings can change. */
-  editing?: { completion: CompletionRow; level: LevelRow } | null
+  /**
+   * Present when editing: the level is fixed and only ratings can change.
+   * `ownerName` is set when an admin is editing somebody else's entry, so the
+   * dialog can say whose ratings are about to change.
+   */
+  editing?: { completion: CompletionRow; level: LevelRow; ownerName?: string } | null
   /** Pre-fills the level ID, e.g. from a level page's "I beat this" button. */
   initialGdLevelId?: number | null
   onSaved: () => void
@@ -257,7 +261,9 @@ export function AddDemonModal({
       title={isEditing ? 'Edit completion' : 'Add Extreme Demon'}
       description={
         isEditing
-          ? 'Update your ratings or your completion video.'
+          ? editing?.ownerName
+            ? `Editing ${editing.ownerName}'s ratings and video, as an admin.`
+            : 'Update your ratings or your completion video.'
           : 'Enter a Geometry Dash level ID and we will pull the level and its AREDL rank.'
       }
       size="lg"

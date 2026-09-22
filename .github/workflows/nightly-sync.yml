@@ -1,0 +1,61 @@
+name: Nightly sync
+
+# Keeps the data fresh without anybody opening the site:
+#   * the AREDL ranking mirror, and every catalogue level's rank
+#   * every member's Geometry Dash stars, moons and demons
+#
+# This is the no-CLI alternative to the Edge Functions. Either approach works;
+# you do not need both. See README, "Keeping data fresh".
+#
+# Requires one repository secret:
+#   SUPABASE_SECRET_KEY   a Supabase secret/service_role key
+#
+# Set it without it ever appearing on screen or in a shell history:
+#   gh secret set SUPABASE_SECRET_KEY
+#
+# and the project URL as a repository variable (not secret - it is public):
+#   gh variable set SUPABASE_URL --body https://<ref>.supabase.co
+
+on:
+  schedule:
+    # 04:17 UTC daily. An odd minute rather than :00, so the run does not land
+    # in the same stampede as every other cron job on the hour.
+    - cron: '17 4 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nightly-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Check configuration
+        env:
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+        run: |
+          if [ -z "${SUPABASE_SECRET_KEY:-}" ]; then
+            echo "::error::SUPABASE_SECRET_KEY is not set. Run: gh secret set SUPABASE_SECRET_KEY"
+            exit 1
+          fi
+          if [ -z "${SUPABASE_URL:-}" ]; then
+            echo "::error::SUPABASE_URL variable is not set. Run: gh variable set SUPABASE_URL --body https://<ref>.supabase.co"
+            exit 1
+          fi
+
+      - name: Sync AREDL and member stats
+        env:
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+        run: node scripts/sync/nightly.mjs

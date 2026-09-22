@@ -132,6 +132,7 @@ select test.expect_true(
     where user_id = '22222222-2222-4222-8222-222222222222'$$
 );
 
+
 select test.check(
   'the same user cannot log the same level twice',
   'authenticated', '11111111-1111-4111-8111-111111111111',
@@ -495,6 +496,66 @@ select test.expect_true(
   $$with before as (select count(*) c from public.completions)
     select true from before$$
 );
+
+-- ===========================================================================
+-- 10. Admins editing other members' completions
+-- ===========================================================================
+-- Deliberately last: these edits change bob's ratings, and the leaderboard
+-- assertions above are calculated on the untouched fixtures.
+
+select test.check(
+  'an admin CAN fix another member''s rating',
+  'authenticated', '33333333-3333-4333-8333-333333333333',
+  $$update public.completions set enjoyment = 7.5
+    where user_id = '22222222-2222-4222-8222-222222222222'$$,
+  'ok'
+);
+
+select test.check(
+  'an admin CAN fix another member''s YouTube link',
+  'authenticated', '33333333-3333-4333-8333-333333333333',
+  $$update public.completions
+    set youtube_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+        youtube_video_id = 'dQw4w9WgXcQ'
+    where user_id = '22222222-2222-4222-8222-222222222222'$$,
+  'ok'
+);
+
+-- Ownership is outside the column grant, so it is immutable for everyone.
+select test.check(
+  'an admin still CANNOT move a completion to another member',
+  'authenticated', '33333333-3333-4333-8333-333333333333',
+  $$update public.completions
+    set user_id = '11111111-1111-4111-8111-111111111111'
+    where user_id = '22222222-2222-4222-8222-222222222222'$$,
+  'error'
+);
+
+select test.check(
+  'an admin still CANNOT repoint a completion at another level',
+  'authenticated', '33333333-3333-4333-8333-333333333333',
+  $$update public.completions
+    set level_id = 'aaaaaaaa-0000-4000-8000-000000000002'
+    where user_id = '22222222-2222-4222-8222-222222222222'$$,
+  'error'
+);
+
+select test.check(
+  'an admin is still bound by the rating scale',
+  'authenticated', '33333333-3333-4333-8333-333333333333',
+  $$update public.completions set difficulty = 7.3
+    where user_id = '22222222-2222-4222-8222-222222222222'$$,
+  'error'
+);
+
+select test.expect_true(
+  'the admin''s edits actually landed',
+  'postgres', null,
+  $$select enjoyment = 7.5 and youtube_video_id = 'dQw4w9WgXcQ'
+    from public.completions
+    where user_id = '22222222-2222-4222-8222-222222222222'$$
+);
+
 
 -- ===========================================================================
 -- Report

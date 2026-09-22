@@ -145,8 +145,10 @@ export async function updateCompletion(
     throw new Error('Nothing to update.')
   }
 
-  // No `.eq('user_id', …)` needed: the RLS policy restricts the statement to
-  // rows owned by auth.uid(). Attempting someone else's row updates nothing.
+  // No `.eq('user_id', …)` needed: RLS restricts the statement to rows owned by
+  // auth.uid(), plus any row at all when the caller is an admin. Attempting a
+  // row neither rule allows updates nothing, which is what the check below
+  // turns into a readable message.
   const { data, error } = await client
     .from('completions')
     .update(update)
@@ -155,7 +157,7 @@ export async function updateCompletion(
     .maybeSingle()
 
   if (error) throw new Error(describeError(error))
-  if (!data) throw new Error('That completion is not yours to edit.')
+  if (!data) throw new Error('That completion is not yours to edit, and you are not an admin.')
   return data
 }
 

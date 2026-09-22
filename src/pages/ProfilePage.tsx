@@ -38,6 +38,9 @@ export function ProfilePage() {
   }, [profileQuery.data])
 
   const isOwnProfile = Boolean(user && profile && user.id === profile.id)
+  // Admins can correct anyone's entry - a wrong rating or a dead video link on
+  // someone else's completion should not need deleting the whole thing.
+  const canEditEntries = isOwnProfile || isAdmin
 
   const completions = useAsync(
     () => completionsService.listUserCompletions(profile!.id),
@@ -197,11 +200,20 @@ export function ProfilePage() {
               ) : null
             }
             onEdit={
-              isOwnProfile
-                ? (completion) => openAddDemon({ editing: { completion, level: completion.level } })
+              canEditEntries
+                ? (completion) =>
+                    openAddDemon({
+                      editing: {
+                        completion,
+                        level: completion.level,
+                        ownerName: isOwnProfile
+                          ? undefined
+                          : profilesService.displayNameOf(profile),
+                      },
+                    })
                 : undefined
             }
-            onDelete={isOwnProfile ? setPendingDelete : undefined}
+            onDelete={canEditEntries ? setPendingDelete : undefined}
           />
         </Section>
       </div>
@@ -211,7 +223,9 @@ export function ProfilePage() {
         title="Remove this completion?"
         message={
           pendingDelete
-            ? `${pendingDelete.level.name} will be removed from your profile along with your ratings and video.`
+            ? isOwnProfile
+              ? `${pendingDelete.level.name} will be removed from your profile along with your ratings and video.`
+              : `${pendingDelete.level.name} will be removed from ${profilesService.displayNameOf(profile)}'s profile, along with their ratings and video. You are doing this as an admin.`
             : ''
         }
         confirmLabel="Remove"
