@@ -151,13 +151,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signIn = useCallback<AuthContextValue['signIn']>(async ({ email, password }) => {
     const client = requireSupabase()
     const { error } = await client.auth.signInWithPassword({ email: email.trim(), password })
-    if (error) {
-      throw new Error(
-        error.message === 'Invalid login credentials'
-          ? 'Wrong email or password.'
-          : describeError(error),
-      )
-    }
+    // describeError handles the wording, including the rate-limit and
+    // unconfirmed-email cases that read as gibberish otherwise.
+    if (error) throw new Error(describeError(error))
   }, [])
 
   const signOut = useCallback(async () => {
