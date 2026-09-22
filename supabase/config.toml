@@ -1,0 +1,50 @@
+# Supabase CLI project configuration.
+#
+# `project_id` is only a local label; `supabase link --project-ref <ref>`
+# is what binds this directory to a hosted project.
+project_id = "blgd"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+major_version = 15
+
+[studio]
+enabled = true
+port = 54323
+
+[auth]
+enabled = true
+# Replace with your deployed origin before running `supabase start` against a
+# local stack. On the hosted project these live in the dashboard under
+# Authentication -> URL Configuration.
+site_url = "http://localhost:5173"
+additional_redirect_urls = ["http://localhost:5173"]
+jwt_expiry = 3600
+enable_refresh_token_rotation = true
+enable_signup = true
+
+[auth.email]
+enable_signup = true
+# Set to true once you are happy with deliverability. Leaving it false lets
+# people sign in immediately after registering, which is friendlier for a small
+# private group.
+enable_confirmations = false
+
+[functions.sync-aredl]
+# Called by pg_cron / GitHub Actions with a shared secret rather than a user
+# JWT, so the platform's own JWT check has to be off. The function verifies the
+# secret itself - see supabase/functions/_shared/supabase.ts.
+verify_jwt = false
+
+[functions.resolve-level]
+verify_jwt = true
+
+[functions.sync-gd-profile]
+verify_jwt = true

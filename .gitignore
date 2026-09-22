@@ -1,0 +1,23 @@
+node_modules
+dist
+dist-ssr
+*.local
+.env
+.env.local
+.env.*.local
+.DS_Store
+*.log
+npm-debug.log*
+.vite
+.vscode/*
+!.vscode/extensions.json
+.idea
+supabase/.temp
+supabase/.branches
+
+# Supabase Edge Function secrets
+supabase/functions/.env.local
+supabase/.env
+
+# Smoke-test build output
+scripts/smoke/out

@@ -1,0 +1,33 @@
+{
+  "name": "blgd",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "BLGD - a private Extreme Demon tracker for a group of Geometry Dash players.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "typecheck": "tsc -b",
+    "preview": "vite preview",
+    "smoke": "vite build --config scripts/smoke/vite.config.ts && node scripts/smoke/run.mjs",
+    "check:responsive": "node scripts/responsive/check.mjs"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.47.10",
+    "lucide-react": "^0.468.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.28.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@types/react": "^18.3.17",
+    "@types/react-dom": "^18.3.5",
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.17",
+    "typescript": "~5.6.3",
+    "vite": "^5.4.11"
+  }
+}

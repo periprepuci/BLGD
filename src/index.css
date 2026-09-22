@@ -1,0 +1,145 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: dark;
+    /* Consumed by components that need the header height, e.g. sticky rails. */
+    --header-h: 3.75rem;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  body {
+    @apply bg-ink-950 font-sans text-ink-200 antialiased;
+    /* A single, very restrained wash of the accent behind the page so the dark
+       ground reads as designed rather than as an absence of colour. No moving
+       gradients, no blobs. */
+    background-image:
+      radial-gradient(60rem 32rem at 12% -8%, rgba(255, 92, 10, 0.09), transparent 60%),
+      radial-gradient(48rem 28rem at 92% 0%, rgba(255, 92, 10, 0.05), transparent 55%);
+    background-attachment: fixed;
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-display font-semibold tracking-tight text-ink-100;
+  }
+
+  :focus-visible {
+    @apply outline-none ring-2 ring-brand-500/70 ring-offset-2 ring-offset-ink-950;
+  }
+
+  /* Firefox */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: theme('colors.ink.700') transparent;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply rounded-full border-[3px] border-solid border-transparent bg-ink-700 bg-clip-content;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-ink-600;
+  }
+
+  /* The range inputs used for ratings. Styled here because pseudo-elements
+     cannot be reached from utility classes. */
+  input[type='range'] {
+    @apply h-1.5 w-full cursor-pointer appearance-none rounded-full bg-ink-700;
+  }
+  input[type='range']::-webkit-slider-thumb {
+    @apply h-5 w-5 appearance-none rounded-full border-2 border-ink-950 bg-brand-500 shadow-glow transition;
+  }
+  input[type='range']::-webkit-slider-thumb:hover {
+    @apply scale-110 bg-brand-400;
+  }
+  input[type='range']::-moz-range-thumb {
+    @apply h-5 w-5 rounded-full border-2 border-ink-950 bg-brand-500 transition;
+  }
+  input[type='range']:disabled {
+    @apply cursor-not-allowed opacity-50;
+  }
+
+  /* Date pickers are white-on-white in dark mode without this. */
+  input[type='date']::-webkit-calendar-picker-indicator {
+    filter: invert(0.75);
+    cursor: pointer;
+  }
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@layer components {
+  .panel {
+    @apply rounded-2xl border border-ink-750/80 bg-ink-900/70 shadow-card backdrop-blur-sm;
+  }
+
+  .stat-label {
+    @apply text-[0.6875rem] font-semibold uppercase tracking-[0.12em] text-ink-400;
+  }
+
+  .skeleton {
+    @apply relative overflow-hidden rounded-md bg-ink-800;
+  }
+
+  .skeleton::after {
+    @apply absolute inset-0 -translate-x-full;
+    content: '';
+    background-image: linear-gradient(
+      90deg,
+      transparent,
+      theme('colors.ink.750'),
+      transparent
+    );
+    animation: shimmer 1.6s infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .skeleton::after {
+      animation: none;
+    }
+  }
+}
+
+@layer utilities {
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .safe-top {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+}

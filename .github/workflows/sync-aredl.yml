@@ -1,0 +1,56 @@
+name: Sync AREDL ranking
+
+# Keeps AREDL ranks current without anyone opening the site.
+#
+# This is the optional, zero-extension alternative to pg_cron (which needs
+# pg_cron + pg_net enabled on the database). Either one works; you do not need
+# both. See the README, "Keeping AREDL up to date".
+#
+# Requires two repository secrets:
+#   SUPABASE_FUNCTIONS_URL  https://<project-ref>.supabase.co/functions/v1
+#   SYNC_SECRET             the same value as the Edge Function secret,
+#                           set with: supabase secrets set SYNC_SECRET=...
+#
+# If the sync-aredl function is not deployed, this workflow fails loudly rather
+# than silently doing nothing.
+
+on:
+  schedule:
+    # 04:17 UTC daily. An odd minute rather than :00, so the run does not land
+    # in the same stampede as every other cron job on the hour.
+    - cron: '17 4 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call sync-aredl
+        env:
+          FUNCTIONS_URL: ${{ secrets.SUPABASE_FUNCTIONS_URL }}
+          SYNC_SECRET: ${{ secrets.SYNC_SECRET }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${FUNCTIONS_URL:-}" ] || [ -z "${SYNC_SECRET:-}" ]; then
+            echo "::error::SUPABASE_FUNCTIONS_URL and SYNC_SECRET must both be set."
+            exit 1
+          fi
+
+          status=$(curl -sS -o response.json -w '%{http_code}' \
+            -X POST "${FUNCTIONS_URL%/}/sync-aredl" \
+            -H "x-sync-secret: ${SYNC_SECRET}" \
+            -H 'content-type: application/json' \
+            -d '{}')
+
+          echo "HTTP ${status}"
+          cat response.json
+          echo
+
+          if [ "$status" != "200" ]; then
+            echo "::error::sync-aredl returned ${status}"
+            exit 1
+          fi

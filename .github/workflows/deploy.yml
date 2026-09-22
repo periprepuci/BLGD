@@ -1,0 +1,91 @@
+name: Deploy to GitHub Pages
+
+# Builds the app and publishes it to GitHub Pages on every push to the default
+# branch. `workflow_dispatch` lets you redeploy by hand after changing a secret.
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+# The minimum the Pages deployment needs. `id-token` is required by
+# actions/deploy-pages.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Never let two deployments race; cancel-in-progress is off so a queued deploy
+# still finishes rather than leaving the site on a half-published version.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Fail if Supabase secrets are missing
+        run: |
+          if [ -z "${{ secrets.VITE_SUPABASE_URL }}" ] || [ -z "${{ secrets.VITE_SUPABASE_ANON_KEY }}" ]; then
+            echo "::error::VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are not set."
+            echo "::error::Add them under Settings -> Secrets and variables -> Actions."
+            echo "::error::Without them the deployed site only renders the setup screen."
+            exit 1
+          fi
+
+      - name: Typecheck and build
+        env:
+          # These are repository *secrets*, but note that both are public by
+          # design: anything in a VITE_ variable is compiled into the bundle and
+          # served to every visitor. They live in secrets to keep them out of
+          # the repo, not because they are confidential. Row Level Security is
+          # what protects the data.
+          #
+          # Set them at: Settings -> Secrets and variables -> Actions
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_SITE_NAME: ${{ vars.VITE_SITE_NAME || 'BLGD' }}
+          # A project site is served from /<repo>/, so Vite needs that prefix to
+          # emit correct asset URLs. A user/organisation site (<user>.github.io)
+          # is served from / - set the VITE_BASE_PATH repository variable to "/"
+          # in that case and this expression will respect it.
+          VITE_BASE_PATH: ${{ vars.VITE_BASE_PATH || format('/{0}/', github.event.repository.name) }}
+        run: npm run build
+
+      # The app routes on the URL fragment (HashRouter), so GitHub Pages only
+      # ever serves index.html and no SPA rewrite is needed. This copy is a
+      # courtesy for anyone who types a path directly: Pages serves 404.html,
+      # which is the app, which then routes on the hash.
+      - name: Add 404 fallback
+        run: cp dist/index.html dist/404.html
+
+      # Stops Pages running the output through Jekyll, which would drop files
+      # and folders beginning with an underscore.
+      - name: Disable Jekyll processing
+        run: touch dist/.nojekyll
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
