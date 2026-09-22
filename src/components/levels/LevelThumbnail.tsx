@@ -3,8 +3,7 @@ import { Play } from 'lucide-react'
 import { SmartImage } from '@/components/ui/SmartImage'
 import type { LevelRow } from '@/types/database'
 import { cn } from '@/utils/cn'
-import { resolveLevelArtwork } from '@/utils/thumbnails'
-import { thumbnailUrl } from '@/utils/youtube'
+import { artworkFallbacks, resolveLevelArtwork } from '@/utils/thumbnails'
 
 export interface LevelThumbnailProps {
   level: Pick<LevelRow, 'name' | 'gd_level_id' | 'thumbnail_url' | 'verification_video_url'>
@@ -34,12 +33,9 @@ export function LevelThumbnail({
 }: LevelThumbnailProps) {
   const artwork = resolveLevelArtwork(level, completionVideoId)
 
-  // YouTube only guarantees hqdefault; step down rather than show a broken img.
-  const videoId = completionVideoId ?? null
-  const fallbacks = [
-    thumbnailUrl(videoId, 'hq'),
-    artwork.source === 'verification' ? thumbnailUrl(videoId, 'mq') : null,
-  ].filter((value): value is string => Boolean(value))
+  // Built from whichever video the artwork actually came from - the viewer's
+  // own completion or AREDL's verification - not just the former.
+  const fallbacks = artworkFallbacks(artwork)
 
   const placeholder = (
     <div

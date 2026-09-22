@@ -196,10 +196,12 @@ export function AddDemonModal({
     }
   }, [isEditing, editing, resolved])
 
+  // Same rule as the cards: the viewer's own completion first, then AREDL's
+  // verification video, and the fallback ladder is built from whichever of the
+  // two actually supplied the frame.
   const ownVideoId = extractYouTubeId(youtubeUrl)
-  const previewImage =
-    thumbnailUrl(ownVideoId) ??
-    thumbnailUrl(extractYouTubeId(preview?.verificationVideoUrl ?? null))
+  const previewVideoId = ownVideoId ?? extractYouTubeId(preview?.verificationVideoUrl ?? null)
+  const previewImage = thumbnailUrl(previewVideoId)
 
   const youtubeCheck = validateYouTubeUrl(youtubeUrl)
   const dateCheck = validateCompletedAt(completedAt)
@@ -348,9 +350,10 @@ export function AddDemonModal({
               <SmartImage
                 src={previewImage}
                 alt={`${preview.name} preview`}
-                fallbacks={[thumbnailUrl(ownVideoId, 'hq')].filter(
-                  (value): value is string => Boolean(value),
-                )}
+                fallbacks={[
+                  thumbnailUrl(previewVideoId, 'hq'),
+                  thumbnailUrl(previewVideoId, 'mq'),
+                ].filter((value): value is string => Boolean(value))}
                 loading="eager"
                 placeholder={
                   <div

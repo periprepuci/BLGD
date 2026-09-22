@@ -22,6 +22,16 @@ export type ThumbnailSource = 'completion' | 'verification' | 'stored' | 'placeh
 export interface LevelArtwork {
   url: string | null
   source: ThumbnailSource
+  /**
+   * The YouTube video the artwork came from, when it came from one.
+   *
+   * Callers need this to build the quality fallback ladder: `maxresdefault`
+   * only exists when the uploader supplied a high-resolution frame, and older
+   * videos often have none. Bloodbath's 2015 verification is exactly that case
+   * - maxres 404s, hqdefault is fine - so without this the card fell straight
+   * through to the placeholder.
+   */
+  videoId: string | null
   /** Hue used for the placeholder, so the fallback matches the card's accent. */
   hue: number
 }
@@ -32,15 +42,34 @@ export function resolveLevelArtwork(
 ): LevelArtwork {
   const hue = hueFromString(`${level.name}${level.gd_level_id}`)
 
-  const own = thumbnailUrl(completionYouTubeId ?? null)
-  if (own) return { url: own, source: 'completion', hue }
+  const ownId = completionYouTubeId ?? null
+  const own = thumbnailUrl(ownId)
+  if (own) return { url: own, source: 'completion', videoId: ownId, hue }
 
-  const verification = thumbnailUrl(extractYouTubeId(level.verification_video_url))
-  if (verification) return { url: verification, source: 'verification', hue }
+  const verificationId = extractYouTubeId(level.verification_video_url)
+  const verification = thumbnailUrl(verificationId)
+  if (verification) {
+    return { url: verification, source: 'verification', videoId: verificationId, hue }
+  }
 
-  if (level.thumbnail_url) return { url: level.thumbnail_url, source: 'stored', hue }
+  if (level.thumbnail_url) {
+    return { url: level.thumbnail_url, source: 'stored', videoId: null, hue }
+  }
 
-  return { url: null, source: 'placeholder', hue }
+  return { url: null, source: 'placeholder', videoId: null, hue }
+}
+
+/**
+ * Lower-quality URLs to try when the preferred one fails, best first.
+ *
+ * `hqdefault` is the only size YouTube guarantees for every video, so it is
+ * always in the ladder; `mqdefault` is a last resort before the placeholder.
+ */
+export function artworkFallbacks(artwork: LevelArtwork): string[] {
+  if (!artwork.videoId) return []
+  return [thumbnailUrl(artwork.videoId, 'hq'), thumbnailUrl(artwork.videoId, 'mq')].filter(
+    (value): value is string => Boolean(value),
+  )
 }
 
 /**

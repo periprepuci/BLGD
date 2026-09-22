@@ -11,7 +11,7 @@ import * as gd from '@/services/geometryDash.service'
 import * as levels from '@/services/levels.service'
 import { extractYouTubeId, thumbnailUrl } from '@/utils/youtube'
 import { clampRating, parseLevelId, validateYouTubeUrl } from '@/utils/validation'
-import { resolveLevelArtwork } from '@/utils/thumbnails'
+import { artworkFallbacks, resolveLevelArtwork } from '@/utils/thumbnails'
 
 let failures = 0
 function check(label: string, ok: boolean, detail = '') {
@@ -125,6 +125,27 @@ async function main() {
   check('falls back to AREDL verification', fallback.source === 'verification', String(fallback.url))
   const placeholder = resolveLevelArtwork({ ...fakeLevel, thumbnail_url: null, verification_video_url: null }, null)
   check('placeholder when nothing available', placeholder.source === 'placeholder' && placeholder.url === null)
+
+  // maxresdefault only exists when the uploader supplied a high-res frame.
+  // Bloodbath's 2015 verification has none, so the fallback ladder has to be
+  // built from the verification video, not only from the viewer's own upload -
+  // which is exactly the bug this asserts against.
+  const oldVerification = {
+    name: 'Bloodbath',
+    gd_level_id: 10565740,
+    thumbnail_url: null,
+    verification_video_url: 'https://www.youtube.com/watch?v=twTw4fjT0ik',
+  }
+  const oldArt = resolveLevelArtwork(oldVerification, null)
+  check('verification-sourced artwork reports its video id',
+    oldArt.source === 'verification' && oldArt.videoId === 'twTw4fjT0ik', String(oldArt.videoId))
+  const ladder = artworkFallbacks(oldArt)
+  check('and therefore has a fallback ladder', ladder.length === 2, ladder.join('  ->  '))
+
+  const maxres = await fetch(oldArt.url!, { method: 'HEAD' })
+  const hq = await fetch(ladder[0]!, { method: 'HEAD' })
+  check('its maxres really is missing and hq really exists',
+    maxres.status === 404 && hq.status === 200, `maxres ${maxres.status}, hq ${hq.status}`)
 
   // --- a level that is not on AREDL ---------------------------------------
   const unranked = await levels.resolveLevel(128)
