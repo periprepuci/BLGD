@@ -1,0 +1,11 @@
+# Normalise line endings so a clone on macOS/Linux does not show every file as
+# modified. Git stores LF; Windows checkouts get CRLF where it matters.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.ico binary
+*.svg text eol=lf
+
+# Keep the lockfile out of diffs by default.
+package-lock.json -diff linguist-generated
