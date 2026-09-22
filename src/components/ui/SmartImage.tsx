@@ -15,12 +15,26 @@ export interface SmartImageProps {
 }
 
 /**
+ * YouTube's "no thumbnail" image is 120x90. Every real thumbnail we request is
+ * larger: mqdefault is 320x180, hqdefault 480x360, maxresdefault 1280x720.
+ */
+const DEGENERATE_WIDTH = 120
+const DEGENERATE_HEIGHT = 90
+
+/**
  * An image that degrades honestly.
  *
  * YouTube's `maxresdefault.jpg` only exists when the uploader supplied a
  * high-resolution frame; `hqdefault.jpg` always does. Rather than guessing, we
- * request the best one and step down on error, then fall back to a placeholder
- * instead of leaving a broken-image icon in a card.
+ * request the best one and step down, then fall back to a placeholder instead
+ * of leaving a broken-image icon in a card.
+ *
+ * Stepping down cannot rely on the `error` event alone. A missing
+ * `maxresdefault` is answered with HTTP 404 *and* a perfectly valid 120x90 grey
+ * placeholder body, which browsers render happily without firing `error`. So a
+ * successful load is also checked against DEGENERATE_* below, and a frame that
+ * small is treated as a miss. Bloodbath's 2015 verification video is exactly
+ * this case.
  *
  * Lazy loading and async decoding are on by default (requirement 26).
  */
@@ -60,7 +74,20 @@ export function SmartImage({
         alt={alt}
         loading={loading}
         decoding="async"
-        onLoad={() => {
+        onLoad={(event) => {
+          const image = event.currentTarget
+          const degenerate =
+            image.naturalWidth > 0 &&
+            image.naturalWidth <= DEGENERATE_WIDTH &&
+            image.naturalHeight <= DEGENERATE_HEIGHT
+
+          // Step past it - and past the end of the ladder if need be, because
+          // our own placeholder reads better than YouTube's grey box.
+          if (degenerate) {
+            setIndex((value) => value + 1)
+            return
+          }
+
           setLoaded(true)
           onLoaded?.()
         }}
