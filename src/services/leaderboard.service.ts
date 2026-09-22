@@ -21,10 +21,20 @@ export interface LeaderboardEntry extends LeaderboardRow {
 
 export const METRICS: Record<
   LeaderboardMetric,
-  { label: string; description: string; unit: string }
+  {
+    label: string
+    /**
+     * The label as it reads mid-sentence. Kept separate rather than
+     * lowercasing `label`, because that turns AREDL into "aredl".
+     */
+    inSentence: string
+    description: string
+    unit: string
+  }
 > = {
   points: {
     label: 'AREDL points',
+    inSentence: 'AREDL points',
     description:
       "Sum of AREDL's own point value for every demon logged here. Harder levels are " +
       'worth more, so this rewards difficulty rather than volume.',
@@ -32,21 +42,25 @@ export const METRICS: Record<
   },
   completions: {
     label: 'Extreme Demons',
+    inSentence: 'Extreme Demons completed',
     description: 'Number of Extreme Demons logged on this site.',
     unit: 'demons',
   },
   enjoyment: {
     label: 'Avg enjoyment',
+    inSentence: 'average enjoyment',
     description: 'Mean personal enjoyment rating across every logged demon.',
     unit: '/10',
   },
   difficulty: {
     label: 'Avg difficulty',
+    inSentence: 'average difficulty',
     description: 'Mean personal difficulty rating across every logged demon.',
     unit: '/10',
   },
   stars: {
     label: 'Stars',
+    inSentence: 'star count',
     description: 'Live star count from the linked Geometry Dash account.',
     unit: 'stars',
   },

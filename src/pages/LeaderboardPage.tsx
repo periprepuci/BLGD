@@ -55,7 +55,7 @@ export function LeaderboardPage() {
       title="Leaderboard"
       description={
         <>
-          Sorted by <span className="text-ink-200">{meta.label.toLowerCase()}</span> only.{' '}
+          Sorted by <span className="text-ink-200">{meta.inSentence}</span> only.{' '}
           {meta.description} Nothing here is a blended score.
         </>
       }
@@ -79,7 +79,7 @@ export function LeaderboardPage() {
           description={
             metric === 'completions'
               ? 'Once people register, they appear here.'
-              : `No member has data for ${meta.label.toLowerCase()} yet.`
+              : `No member has data for ${meta.inSentence} yet.`
           }
         />
       ) : (
@@ -171,7 +171,7 @@ export function LeaderboardPage() {
             ? "AREDL's own point value per level, summed. Nothing here is weighted or blended by this site."
             : metric === 'completions'
               ? 'Every member is listed, including those at zero.'
-              : `Members with no ${meta.label.toLowerCase()} data are left out rather than ranked last on a blank.`}
+              : `Members with no ${meta.inSentence} data are left out rather than ranked last on a blank.`}
         </p>
       )}
     </Page>
