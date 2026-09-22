@@ -71,6 +71,8 @@ export interface GdPlayer {
   moons: number | null
   diamonds: number | null
   demons: number | null
+  /** Classic Extreme Demons completed in game. */
+  extremeDemons: number | null
   icon: GdIcon | null
 }
 

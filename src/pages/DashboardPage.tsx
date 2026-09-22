@@ -7,6 +7,7 @@ import { Button, ButtonLink } from '@/components/ui/Button'
 import { StatTile } from '@/components/ui/StatTile'
 import { Page, Section } from '@/components/layout/Page'
 import { CompletionList } from '@/components/levels/CompletionList'
+import { MissingDemonsNotice } from '@/components/profile/MissingDemonsNotice'
 import { useAction, useAsync } from '@/hooks/useAsync'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
@@ -34,6 +35,10 @@ export function DashboardPage() {
 
   const stats = completionsService.summarise(completions.data ?? [])
   const myRank = leaderboardService.findRank(board.data ?? [], profile?.id)
+
+  const extremeLogged = (completions.data ?? []).filter(
+    (c) => c.level.difficulty === 'Extreme Demon' || c.level.aredl_rank !== null,
+  ).length
 
   const remove = useAction(async (completion: CompletionWithLevel) => {
     await completionsService.deleteCompletion(completion.id)
@@ -96,8 +101,26 @@ export function DashboardPage() {
           />
           <StatTile
             label="Extreme Demons"
-            value={stats.total}
-            detail={stats.withVideo > 0 ? `${stats.withVideo} with video` : 'logged here'}
+            value={
+              profile?.gd_extreme_demons == null ? (
+                stats.total
+              ) : (
+                <>
+                  {stats.total}
+                  <span className="text-lg font-medium text-ink-500">
+                    {' / '}
+                    {profile.gd_extreme_demons}
+                  </span>
+                </>
+              )
+            }
+            detail={
+              profile?.gd_extreme_demons == null
+                ? stats.withVideo > 0
+                  ? `${stats.withVideo} with video`
+                  : 'logged here'
+                : 'logged / beaten in game'
+            }
             icon={Skull}
           />
           <StatTile
@@ -142,6 +165,16 @@ export function DashboardPage() {
               className="col-span-2"
             />
           </div>
+        )}
+
+        {!completions.initialLoading && profile && (
+          <MissingDemonsNotice
+            inGame={profile.gd_extreme_demons}
+            logged={extremeLogged}
+            displayName={displayNameOf(profile)}
+            isOwnProfile
+            onAdd={() => openAddDemon()}
+          />
         )}
 
         <Section

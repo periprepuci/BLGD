@@ -138,6 +138,7 @@ export async function linkGdAccount(profileId: string, gdUsername: string): Prom
       gd_moons: player.moons,
       gd_diamonds: player.diamonds,
       gd_demons: player.demons,
+      gd_extreme_demons: player.extremeDemons,
       gd_icon: player.icon,
       gd_synced_at: new Date().toISOString(),
     })
@@ -167,6 +168,7 @@ export async function unlinkGdAccount(profileId: string): Promise<ProfileRow> {
       gd_moons: null,
       gd_diamonds: null,
       gd_demons: null,
+      gd_extreme_demons: null,
       gd_icon: null,
       gd_synced_at: null,
     })

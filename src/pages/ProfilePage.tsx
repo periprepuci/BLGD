@@ -8,6 +8,7 @@ import { EmptyState, ErrorState } from '@/components/ui/EmptyState'
 import { ProfileHeaderSkeleton, LevelCardSkeletonList } from '@/components/ui/Skeleton'
 import { Page, Section } from '@/components/layout/Page'
 import { CompletionList } from '@/components/levels/CompletionList'
+import { MissingDemonsNotice } from '@/components/profile/MissingDemonsNotice'
 import { ProfileHeader } from '@/components/profile/ProfileHeader'
 import { useAction, useAsync } from '@/hooks/useAsync'
 import { useAuth } from '@/hooks/useAuth'
@@ -154,6 +155,13 @@ export function ProfilePage() {
   const stats = completionsService.summarise(completions.data ?? [])
   const rank = leaderboardService.findRank(board.data ?? [], profile.id)
 
+  // Count only entries that really are Extreme Demons, so the comparison with
+  // the in-game figure is like for like. A level carrying an AREDL rank counts
+  // even if the provider left `difficulty` null when it was first resolved.
+  const extremeLogged = (completions.data ?? []).filter(
+    (c) => c.level.difficulty === 'Extreme Demon' || c.level.aredl_rank !== null,
+  ).length
+
   return (
     <Page
       title={profilesService.displayNameOf(profile)}
@@ -178,6 +186,16 @@ export function ProfilePage() {
           onRefreshStats={onRefreshStats}
           refreshing={refreshStats.pending}
         />
+
+        {!completions.initialLoading && (
+          <MissingDemonsNotice
+            inGame={profile.gd_extreme_demons}
+            logged={extremeLogged}
+            displayName={profilesService.displayNameOf(profile)}
+            isOwnProfile={isOwnProfile}
+            onAdd={() => openAddDemon()}
+          />
+        )}
 
         <Section title="Completed Extreme Demons">
           <CompletionList

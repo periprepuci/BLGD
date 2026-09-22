@@ -120,6 +120,7 @@ export interface GdRawProfile {
   col2?: number
   colG?: number
   glow?: boolean
+  classicDemonsCompleted?: { extreme?: number }
 }
 
 export async function fetchGdLevel(gdLevelId: number): Promise<GdRawLevel> {

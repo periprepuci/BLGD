@@ -498,6 +498,61 @@ select test.expect_true(
 );
 
 -- ===========================================================================
+-- 9b. Extreme Demons beaten in game vs logged here
+-- ===========================================================================
+
+-- Alice has two completions on file, both on ranked levels.
+select test.check(
+  'a member can record how many extremes they beat in game',
+  'authenticated', '11111111-1111-4111-8111-111111111111',
+  $$update public.profiles set gd_extreme_demons = 5
+    where id = '11111111-1111-4111-8111-111111111111'$$,
+  'ok'
+);
+
+select test.expect_true(
+  'the leaderboard reports the gap',
+  'anon', null,
+  $$select extreme_completions_count = 2 and missing_extreme_demons = 3
+    from public.leaderboard where username = 'alice'$$
+);
+
+select test.check(
+  'and the in-game count is still admin-or-self only',
+  'authenticated', '11111111-1111-4111-8111-111111111111',
+  $$update public.profiles set gd_extreme_demons = 999
+    where id = '22222222-2222-4222-8222-222222222222'$$,
+  'no_rows'
+);
+
+-- Logging more than the game credits is possible (an unrated level, or a
+-- completion the game has not registered). That is not an error and must not
+-- surface as a negative gap.
+select test.check(
+  'beating fewer in game than are logged is allowed',
+  'authenticated', '11111111-1111-4111-8111-111111111111',
+  $$update public.profiles set gd_extreme_demons = 1
+    where id = '11111111-1111-4111-8111-111111111111'$$,
+  'ok'
+);
+
+select test.expect_true(
+  'and the gap floors at zero rather than going negative',
+  'anon', null,
+  $$select missing_extreme_demons = 0
+    from public.leaderboard where username = 'alice'$$
+);
+
+-- Without a linked account the question has no answer, and "0 missing" would
+-- be a lie dressed as reassurance.
+select test.expect_true(
+  'no linked account means no answer, not zero',
+  'anon', null,
+  $$select missing_extreme_demons is null
+    from public.leaderboard where username = 'boss'$$
+);
+
+-- ===========================================================================
 -- 10. Admins editing other members' completions
 -- ===========================================================================
 -- Deliberately last: these edits change bob's ratings, and the leaderboard

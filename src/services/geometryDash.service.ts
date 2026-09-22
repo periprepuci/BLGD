@@ -67,6 +67,15 @@ interface RawGdProfile {
   col2?: number
   colG?: number
   glow?: boolean
+  classicDemonsCompleted?: {
+    easy?: number
+    medium?: number
+    hard?: number
+    insane?: number
+    extreme?: number
+    weekly?: number
+    gauntlet?: number
+  }
 }
 
 // --- parsing ----------------------------------------------------------------
@@ -119,6 +128,10 @@ function parseProfile(raw: RawGdProfile, requested: string): GdPlayer {
     moons: toInt(raw.moons),
     diamonds: toInt(raw.diamonds),
     demons: toInt(raw.demons),
+    // Classic only. AREDL is a classic-mode list, so counting platformer
+    // extremes here would make the "you are missing N" figure permanently
+    // wrong for anyone who has beaten one.
+    extremeDemons: toInt(raw.classicDemonsCompleted?.extreme),
     icon,
   }
 }

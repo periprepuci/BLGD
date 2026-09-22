@@ -109,8 +109,26 @@ export function ProfileHeader({
         <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
           <StatTile
             label="Extreme Demons"
-            value={stats.total}
-            detail={isOwnProfile ? 'logged by you' : 'logged here'}
+            value={
+              profile.gd_extreme_demons === null ? (
+                stats.total
+              ) : (
+                <>
+                  {stats.total}
+                  <span className="text-lg font-medium text-ink-500">
+                    {' / '}
+                    {profile.gd_extreme_demons}
+                  </span>
+                </>
+              )
+            }
+            detail={
+              profile.gd_extreme_demons === null
+                ? isOwnProfile
+                  ? 'logged by you'
+                  : 'logged here'
+                : 'logged here / beaten in game'
+            }
             icon={Skull}
             tone="brand"
           />

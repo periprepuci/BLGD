@@ -214,7 +214,9 @@ async function syncAredl() {
 
 async function syncProfiles() {
   console.log('\n— Geometry Dash stats —')
-  const profiles = await rest('profiles?select=id,username,gd_username,gd_stars&gd_username=not.is.null')
+  const profiles = await rest(
+    'profiles?select=id,username,gd_username,gd_stars,gd_extreme_demons&gd_username=not.is.null',
+  )
 
   let refreshed = 0
   for (const profile of profiles) {
@@ -235,6 +237,8 @@ async function syncProfiles() {
           gd_moons: toInt(player.moons),
           gd_diamonds: toInt(player.diamonds),
           gd_demons: toInt(player.demons),
+          // Classic only: AREDL is a classic-mode list.
+          gd_extreme_demons: toInt(player.classicDemonsCompleted?.extreme),
           gd_icon: {
             icon: toInt(player.icon), ship: toInt(player.ship), ball: toInt(player.ball),
             ufo: toInt(player.ufo), wave: toInt(player.wave), robot: toInt(player.robot),
@@ -247,8 +251,10 @@ async function syncProfiles() {
       })
 
       const delta = toInt(player.stars) - (profile.gd_stars ?? 0)
+      const extremes = toInt(player.classicDemonsCompleted?.extreme)
       console.log(
-        `  @${profile.username}: ${player.stars} stars${delta ? ` (${delta > 0 ? '+' : ''}${delta})` : ''}, ${player.demons} demons`,
+        `  @${profile.username}: ${player.stars} stars${delta ? ` (${delta > 0 ? '+' : ''}${delta})` : ''}, ` +
+          `${player.demons} demons, ${extremes} extreme`,
       )
       refreshed += 1
     } catch (error) {

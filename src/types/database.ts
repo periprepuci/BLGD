@@ -44,6 +44,9 @@ export type ProfileRow = {
   gd_moons: number | null
   gd_diamonds: number | null
   gd_demons: number | null
+  /** Classic Extreme Demons completed in Geometry Dash. Classic only: AREDL is
+   *  a classic-mode list, so a platformer extreme could never be on it. */
+  gd_extreme_demons: number | null
   gd_icon: GdIcon | null
   gd_synced_at: string | null
   is_admin: boolean
@@ -64,6 +67,7 @@ export type ProfileUpdate = Partial<
     | 'gd_moons'
     | 'gd_diamonds'
     | 'gd_demons'
+    | 'gd_extreme_demons'
     | 'gd_icon'
     | 'gd_synced_at'
   >
@@ -147,11 +151,16 @@ export type LeaderboardRow = {
   gd_demons: number | null
   gd_moons: number | null
   gd_icon: GdIcon | null
+  gd_extreme_demons: number | null
   completions_count: number
+  /** Completions that really are Extreme Demons - comparable to gd_extreme_demons. */
+  extreme_completions_count: number
   avg_enjoyment: number | null
   avg_difficulty: number | null
   best_aredl_rank: number | null
   last_completion_at: string | null
+  /** Beaten in game but not logged here. NULL when no account is linked. */
+  missing_extreme_demons: number | null
 }
 
 export type LevelStatsRow = {

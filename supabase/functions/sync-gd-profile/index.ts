@@ -83,6 +83,8 @@ Deno.serve(async (request) => {
         gd_moons: toInt(player.moons),
         gd_diamonds: toInt(player.diamonds),
         gd_demons: toInt(player.demons),
+        // Classic only: AREDL is a classic-mode list.
+        gd_extreme_demons: toInt(player.classicDemonsCompleted?.extreme),
         gd_icon: gdIconPayload(player),
         gd_synced_at: new Date().toISOString(),
       })
