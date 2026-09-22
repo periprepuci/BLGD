@@ -216,6 +216,34 @@ select test.check(
   'no_rows'
 );
 
+-- An admin is allowed to refresh anyone's Geometry Dash stats from the client:
+-- the "admins update any profile" policy permits the row, and gd_* is inside
+-- the column grant. This is what the Refresh stats button relies on.
+select test.check(
+  'an admin CAN refresh another member''s Geometry Dash stats',
+  'authenticated', '33333333-3333-4333-8333-333333333333',
+  $$update public.profiles
+    set gd_stars = 12129, gd_demons = 20, gd_synced_at = now()
+    where id = '22222222-2222-4222-8222-222222222222'$$,
+  'ok'
+);
+
+select test.check(
+  'but an admin still CANNOT grant admin to anyone',
+  'authenticated', '33333333-3333-4333-8333-333333333333',
+  $$update public.profiles set is_admin = true
+    where id = '22222222-2222-4222-8222-222222222222'$$,
+  'error'
+);
+
+select test.check(
+  'a non-admin CANNOT refresh another member''s stats',
+  'authenticated', '11111111-1111-4111-8111-111111111111',
+  $$update public.profiles set gd_stars = 99999
+    where id = '22222222-2222-4222-8222-222222222222'$$,
+  'no_rows'
+);
+
 select test.check(
   'alice can rename herself',
   'authenticated', '11111111-1111-4111-8111-111111111111',

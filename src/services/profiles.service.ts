@@ -197,13 +197,14 @@ interface EdgeSyncedProfile {
  *   * `sync-gd-profile` Edge Function - works for *any* member, because it uses
  *     the service_role key. This is what keeps a friend's star count current
  *     when you visit their page.
- *   * Direct - only works for your own row, because RLS will not let you write
- *     someone else's. Returns the profile unchanged in that case rather than
- *     pretending to have refreshed it.
+ *   * Direct - your own row, or anyone's if you are an admin, because the
+ *     "admins update any profile" policy permits the row and every gd_ column
+ *     is inside the grant. For anyone else it returns the profile unchanged
+ *     rather than pretending to have refreshed it.
  */
 export async function syncGdStats(
   profile: ProfileRow,
-  options: { force?: boolean; currentUserId?: string | null } = {},
+  options: { force?: boolean; currentUserId?: string | null; isAdmin?: boolean } = {},
 ): Promise<{ profile: ProfileRow; refreshed: boolean }> {
   if (!profile.gd_username) return { profile, refreshed: false }
   if (!options.force && !statsAreStale(profile)) return { profile, refreshed: false }
@@ -214,8 +215,10 @@ export async function syncGdStats(
   })
   if (viaEdge?.profile) return { profile: viaEdge.profile, refreshed: viaEdge.refreshed }
 
-  // Direct path: RLS only allows writing your own row.
-  if (options.currentUserId !== profile.id) return { profile, refreshed: false }
+  // Direct path. RLS allows your own row always, and any row when you are an
+  // admin; anything else would be refused server-side, so do not bother asking.
+  const mayWrite = options.currentUserId === profile.id || options.isAdmin === true
+  if (!mayWrite) return { profile, refreshed: false }
 
   try {
     const updated = await linkGdAccount(profile.id, profile.gd_username)

@@ -21,7 +21,7 @@ import type { CompletionWithLevel } from '@/types/domain'
 
 export function ProfilePage() {
   const { username = '' } = useParams<{ username: string }>()
-  const { user, setProfile: setOwnProfile } = useAuth()
+  const { user, isAdmin, setProfile: setOwnProfile } = useAuth()
   const { openAddDemon, dataVersion, bumpDataVersion } = useAppContext()
   const toast = useToast()
 
@@ -57,7 +57,7 @@ export function ProfilePage() {
     let active = true
 
     void profilesService
-      .syncGdStats(profile, { currentUserId: user?.id ?? null })
+      .syncGdStats(profile, { currentUserId: user?.id ?? null, isAdmin })
       .then(({ profile: updated, refreshed }) => {
         if (!active || !refreshed) return
         setProfile(updated)
@@ -70,13 +70,14 @@ export function ProfilePage() {
     // Deliberately keyed on the id: re-running on every `profile` change would
     // loop, because a successful sync replaces the object.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profile?.id, user?.id])
+  }, [profile?.id, user?.id, isAdmin])
 
   const refreshStats = useAction(async () => {
     if (!profile) return null
     const { profile: updated, refreshed } = await profilesService.syncGdStats(profile, {
       force: true,
       currentUserId: user?.id ?? null,
+      isAdmin,
     })
 
     setProfile(updated)
@@ -84,9 +85,10 @@ export function ProfilePage() {
 
     if (!refreshed) {
       throw new Error(
-        isOwnProfile
+        isOwnProfile || isAdmin
           ? 'Geometry Dash could not be reached. Try again in a moment.'
-          : 'Refreshing another member’s stats needs the sync-gd-profile Edge Function deployed.',
+          : 'Only admins can refresh another member’s stats from the browser. ' +
+            'Deploy the sync-gd-profile Edge Function to let everyone do it.',
       )
     }
     return updated
