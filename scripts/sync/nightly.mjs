@@ -49,6 +49,18 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 const round2 = (value) =>
   value === null || value === undefined ? null : Math.round(Number(value) * 100) / 100
 
+/**
+ * AREDL publishes points multiplied by ten so its API never has to carry a
+ * decimal: Society (#1) comes back as 5000 and its site shows 500, Congregation
+ * (#272) as 1288 for a displayed 128.8. Every value in the list is an integer
+ * and the smallest non-zero one is 10, which is what confirms the scale.
+ *
+ * Dividing here means the rest of the app - and the database - hold the number
+ * AREDL actually means.
+ */
+const POINTS_SCALE = 10
+const toPoints = (raw) => (typeof raw === 'number' ? raw / POINTS_SCALE : null)
+
 async function rest(path, init = {}) {
   const response = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
     ...init,
@@ -119,7 +131,7 @@ async function syncAredl() {
       name: (e.name ?? `Level ${e.level_id}`).trim(),
       position: e.position,
       status: e.status ?? null,
-      points: typeof e.points === 'number' ? e.points : null,
+      points: toPoints(e.points),
       gddl_tier: typeof e.gddl_tier === 'number' ? e.gddl_tier : null,
       two_player: Boolean(e.two_player),
       tags: Array.isArray(e.tags) ? e.tags : [],

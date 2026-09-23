@@ -44,6 +44,21 @@ const ARTWORK_BUDGET = 25
  * raw value against the stored one would mark every level as changed on every
  * run.
  */
+/**
+ * AREDL publishes points multiplied by ten so its API never has to carry a
+ * decimal: Society (#1) comes back as 5000 and its site shows 500, Congregation
+ * (#272) as 1288 for a displayed 128.8. Every value in the list is an integer
+ * and the smallest non-zero one is 10, which is what confirms the scale.
+ *
+ * Dividing here means the rest of the app - and the database - hold the number
+ * AREDL actually means.
+ */
+const POINTS_SCALE = 10
+
+function toPoints(raw: unknown): number | null {
+  return typeof raw === 'number' ? raw / POINTS_SCALE : null
+}
+
 function round2(value: number | null | undefined): number | null {
   return value === null || value === undefined ? null : Math.round(Number(value) * 100) / 100
 }
@@ -101,7 +116,7 @@ Deno.serve(async (request) => {
       name: entry.name?.trim() || `Level ${entry.level_id}`,
       position: entry.position ?? 0,
       status: entry.status ?? null,
-      points: typeof entry.points === 'number' ? entry.points : null,
+      points: toPoints(entry.points),
       gddl_tier: typeof entry.gddl_tier === 'number' ? entry.gddl_tier : null,
       two_player: Boolean(entry.two_player),
       tags: Array.isArray(entry.tags) ? entry.tags : [],

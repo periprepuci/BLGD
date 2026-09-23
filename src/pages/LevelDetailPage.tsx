@@ -10,6 +10,7 @@ import {
   RefreshCw,
   Ruler,
   Search,
+  Trophy,
   Users,
 } from 'lucide-react'
 
@@ -28,7 +29,13 @@ import { useAppContext } from '@/layouts/AppLayout'
 import * as completionsService from '@/services/completions.service'
 import * as levelsService from '@/services/levels.service'
 import { avatarUrl, displayNameOf } from '@/services/profiles.service'
-import { formatCompact, formatDate, formatRating, formatRelative } from '@/utils/format'
+import {
+  formatCompact,
+  formatDate,
+  formatPoints,
+  formatRating,
+  formatRelative,
+} from '@/utils/format'
 import { watchUrl } from '@/utils/youtube'
 
 export function LevelDetailPage() {
@@ -193,11 +200,17 @@ export function LevelDetailPage() {
         {/* --- aggregate stats --------------------------------------------- */}
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <StatTile
+            label="AREDL points"
+            value={formatPoints(data.aredl_points)}
+            detail={data.aredl_rank ? `worth this at #${data.aredl_rank}` : 'not on the list'}
+            icon={Trophy}
+            tone="brand"
+          />
+          <StatTile
             label="Beaten by"
             value={data.completions_count}
             detail="members here"
             icon={Users}
-            tone="brand"
           />
           <StatTile
             label="Avg enjoyment"
@@ -216,11 +229,6 @@ export function LevelDetailPage() {
                 <span className="text-base font-medium text-ink-500"> / 10</span>
               </>
             }
-          />
-          <StatTile
-            label="Creators"
-            value={data.creators.length || 1}
-            detail={data.creators.length > 0 ? data.creators.slice(0, 3).join(', ') : data.creator}
           />
         </div>
 

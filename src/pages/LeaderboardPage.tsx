@@ -15,7 +15,7 @@ import * as leaderboardService from '@/services/leaderboard.service'
 import { avatarUrl, displayNameOf } from '@/services/profiles.service'
 import type { LeaderboardMetric } from '@/types/domain'
 import { cn } from '@/utils/cn'
-import { finiteOrNull, formatNumber, formatRating, pluralize } from '@/utils/format'
+import { finiteOrNull, formatNumber, formatPoints, formatRating, pluralize } from '@/utils/format'
 
 const OPTIONS: { value: LeaderboardMetric; label: string; title: string }[] = [
   { value: 'points', label: 'Points', title: leaderboardService.METRICS.points.description },
@@ -33,8 +33,7 @@ function pointsOf(entry: { aredl_points_total: number }): number {
 function metricDisplay(metric: LeaderboardMetric, value: number | null): string {
   if (value === null) return '—'
   if (metric === 'enjoyment' || metric === 'difficulty') return formatRating(value)
-  // Points come back as numeric(12,2); the decimals are noise on a leaderboard.
-  if (metric === 'points') return formatNumber(Math.round(value))
+  if (metric === 'points') return formatPoints(value)
   return formatNumber(value)
 }
 
@@ -136,7 +135,7 @@ export function LeaderboardPage() {
                         </span>
                       )}
                       {metric !== 'points' && pointsOf(entry) > 0 && (
-                        <span>{formatNumber(Math.round(pointsOf(entry)))} pts</span>
+                        <span>{formatPoints(pointsOf(entry))} pts</span>
                       )}
                       {metric === 'points' && entry.best_aredl_rank !== null && (
                         <span>hardest #{entry.best_aredl_rank}</span>

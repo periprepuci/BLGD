@@ -49,7 +49,8 @@ export function ProfilePage() {
     { enabled: Boolean(profile) },
   )
 
-  const board = useAsync(() => leaderboardService.getLeaderboard('completions'), [dataVersion])
+  // Ranked by AREDL points, not by how many demons someone has logged:
+  // twenty easy extremes should not outrank three brutal ones.
   const points = useAsync(() => leaderboardService.getLeaderboard('points'), [dataVersion])
 
   /**
@@ -154,7 +155,7 @@ export function ProfilePage() {
   }
 
   const stats = completionsService.summarise(completions.data ?? [])
-  const rank = leaderboardService.findRank(board.data ?? [], profile.id)
+  const standing = leaderboardService.findRank(points.data ?? [], profile.id)
 
   // Count only entries that really are Extreme Demons, so the comparison with
   // the in-game figure is like for like. A level carrying an AREDL rank counts
@@ -182,10 +183,8 @@ export function ProfilePage() {
         <ProfileHeader
           profile={profile}
           stats={stats}
-          leaderboardRank={rank?.rank ?? null}
-          aredlPoints={
-            leaderboardService.findRank(points.data ?? [], profile.id)?.metricValue ?? null
-          }
+          leaderboardRank={standing?.rank ?? null}
+          aredlPoints={standing?.metricValue ?? null}
           isOwnProfile={isOwnProfile}
           onRefreshStats={onRefreshStats}
           refreshing={refreshStats.pending}

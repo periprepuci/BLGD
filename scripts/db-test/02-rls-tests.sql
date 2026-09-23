@@ -555,24 +555,33 @@ select test.expect_true(
 -- ===========================================================================
 -- 9c. AREDL points, summed
 -- ===========================================================================
--- Fixtures: Bloodlust #255 and Society #1. Give them AREDL's own point values
--- and check the sum, rather than a number this site invented.
+-- Fixtures: Bloodlust #255 and Society #1, at the scale AREDL actually means.
+-- Its API multiplies points by ten to avoid decimals (Society arrives as 5000
+-- for a displayed 500, Bloodbath as 372 for 37.2); the app divides on the way
+-- in, so the database holds the real figure and these numbers are what a
+-- member would read on aredl.net.
 
-update public.levels set aredl_points = 372.00 where gd_level_id = 42584142;
-update public.levels set aredl_points = 5000.00 where gd_level_id = 127323087;
+update public.levels set aredl_points = 37.20 where gd_level_id = 42584142;
+update public.levels set aredl_points = 500.00 where gd_level_id = 127323087;
 
 select test.expect_true(
   'a member''s points are the sum of their levels',
   'anon', null,
-  $$select aredl_points_total = 5372.00
+  $$select aredl_points_total = 537.20
     from public.leaderboard where username = 'alice'$$
 );
 
 select test.expect_true(
   'and someone who beat only the easier one scores less',
   'anon', null,
-  $$select aredl_points_total = 372.00
+  $$select aredl_points_total = 37.20
     from public.leaderboard where username = 'bob'$$
+);
+
+select test.expect_true(
+  'points keep their decimal rather than rounding to a whole number',
+  'anon', null,
+  $$select aredl_points = 37.20 from public.levels where gd_level_id = 42584142$$
 );
 
 -- Zero is a real answer here, unlike the "missing demons" figure.
@@ -604,7 +613,7 @@ select test.check(
 select test.expect_true(
   'bob still has exactly his ranked points',
   'anon', null,
-  $$select aredl_points_total = 372.00
+  $$select aredl_points_total = 37.20
     from public.leaderboard where username = 'bob'$$
 );
 

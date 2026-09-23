@@ -171,7 +171,13 @@ Deno.serve(async (request) => {
           aredl_id: entry?.id ?? null,
           aredl_rank: entry?.position ?? null,
           aredl_status: status,
-          aredl_points: typeof entry?.points === 'number' ? entry.points : null,
+          // The mirror already stores the true scale; a live-list fallback does not.
+          aredl_points:
+            typeof entry?.points === 'number'
+              ? aredlSource === 'mirror'
+                ? entry.points
+                : entry.points / 10
+              : null,
           gddl_tier: typeof entry?.gddl_tier === 'number' ? entry.gddl_tier : null,
           tags: Array.isArray(entry?.tags) ? entry.tags : [],
           verification_video_url: verificationVideo,

@@ -8,6 +8,7 @@ import type { ProfileRow } from '@/types/database'
 import {
   finiteOrNull,
   formatNumber,
+  formatPoints,
   formatRating,
   formatRelative,
   ordinal,
@@ -70,7 +71,7 @@ export function ProfileHeader({
               <h1 className="min-w-0 break-words text-2xl sm:text-3xl">{name}</h1>
               {profile.is_admin && <Badge tone="brand">Admin</Badge>}
               {leaderboardRank && (
-                <Badge tone="neutral" title="Rank by Extreme Demons completed here">
+                <Badge tone="neutral" title="Rank among members by total AREDL points">
                   <Trophy className="h-3 w-3" aria-hidden="true" />
                   {ordinal(leaderboardRank)}
                 </Badge>
@@ -96,7 +97,7 @@ export function ProfileHeader({
                   title="Sum of AREDL's own point value across every logged demon"
                 >
                   <Trophy className="h-4 w-4" aria-hidden="true" />
-                  {formatNumber(Math.round(points))}
+                  {formatPoints(points)}
                   <span className="font-normal text-ink-500">AREDL points</span>
                 </span>
               )}

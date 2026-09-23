@@ -44,6 +44,21 @@ import { invokeEdge } from './edge'
 
 const BASE = env.aredlApiBase
 
+/**
+ * AREDL publishes points multiplied by ten so its API never has to carry a
+ * decimal: Society (#1) comes back as 5000 and its site shows 500, Congregation
+ * (#272) as 1288 for a displayed 128.8. Every value in the list is an integer
+ * and the smallest non-zero one is 10, which is what confirms the scale.
+ *
+ * Dividing here means the rest of the app - and the database - hold the number
+ * AREDL actually means.
+ */
+const POINTS_SCALE = 10
+
+function toPoints(raw: unknown): number | null {
+  return typeof raw === 'number' ? raw / POINTS_SCALE : null
+}
+
 // --- raw API shapes ---------------------------------------------------------
 
 interface RawAredlLevel {
@@ -82,7 +97,7 @@ function parseEntry(raw: RawAredlLevel): AredlEntry | null {
     name: raw.name?.trim() || `Level ${raw.level_id}`,
     position: raw.position,
     status: raw.status ?? null,
-    points: typeof raw.points === 'number' ? raw.points : null,
+    points: toPoints(raw.points),
     gddlTier: typeof raw.gddl_tier === 'number' ? raw.gddl_tier : null,
     twoPlayer: Boolean(raw.two_player),
     tags: Array.isArray(raw.tags) ? raw.tags : [],

@@ -1,9 +1,9 @@
 import { Link } from 'react-router-dom'
-import { Calendar, ExternalLink, Pencil, Play, Trash2, User } from 'lucide-react'
+import { Calendar, ExternalLink, Pencil, Play, Trash2, Trophy, User } from 'lucide-react'
 
 import { RankBadge } from '@/components/ui/Badge'
 import { cn } from '@/utils/cn'
-import { formatDate, formatRating } from '@/utils/format'
+import { formatDate, formatPoints, formatRating } from '@/utils/format'
 import { watchUrl } from '@/utils/youtube'
 import type { CompletionWithLevel } from '@/types/domain'
 import { LevelThumbnail } from './LevelThumbnail'
@@ -170,6 +170,17 @@ export function LevelCard({
                 <User className="h-3.5 w-3.5" aria-hidden="true" />
                 {byline.label}
               </Link>
+            )}
+
+            {level.aredl_points !== null && (
+              <span
+                className="inline-flex items-center gap-1 text-xs font-semibold text-brand-300"
+                title="What this level is worth on the AREDL list"
+              >
+                <Trophy className="h-3.5 w-3.5" aria-hidden="true" />
+                {formatPoints(level.aredl_points)}
+                <span className="font-normal text-ink-500">pts</span>
+              </span>
             )}
 
             <span className="ml-auto hidden font-mono text-[0.6875rem] text-ink-600 sm:inline">

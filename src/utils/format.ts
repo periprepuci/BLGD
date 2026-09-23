@@ -22,6 +22,15 @@ export function formatNumber(value: number | null | undefined): string {
   return numberFormat.format(value)
 }
 
+/**
+ * AREDL points. One decimal, dropped when it is zero: 128.8, but 500 not 500.0.
+ */
+export function formatPoints(value: number | string | null | undefined): string {
+  const n = finiteOrNull(value)
+  if (n === null) return '—'
+  return Number.isInteger(n) ? numberFormat.format(n) : n.toFixed(1)
+}
+
 export function formatCompact(value: number | null | undefined): string {
   if (value === null || value === undefined || Number.isNaN(value)) return '—'
   if (Math.abs(value) < 10_000) return numberFormat.format(value)

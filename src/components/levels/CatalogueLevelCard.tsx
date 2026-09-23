@@ -1,9 +1,9 @@
 import { Link } from 'react-router-dom'
-import { Users } from 'lucide-react'
+import { Trophy, Users } from 'lucide-react'
 
 import { RankBadge } from '@/components/ui/Badge'
 import { cn } from '@/utils/cn'
-import { formatRating, pluralize } from '@/utils/format'
+import { formatPoints, formatRating, pluralize } from '@/utils/format'
 import type { LevelWithStats } from '@/types/domain'
 import { LevelThumbnail } from './LevelThumbnail'
 
@@ -34,6 +34,16 @@ export function CatalogueLevelCard({
         <div className="absolute left-3 top-3">
           <RankBadge rank={level.aredl_rank} status={level.aredl_status} />
         </div>
+
+        {level.aredl_points !== null && (
+          <span
+            className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-md border border-brand-500/35 bg-ink-950/80 px-2 py-1 text-xs font-bold text-brand-300 backdrop-blur-sm"
+            title="What this level is worth on the AREDL list"
+          >
+            <Trophy className="h-3 w-3" aria-hidden="true" />
+            {formatPoints(level.aredl_points)}
+          </span>
+        )}
       </div>
 
       <div className="space-y-3 p-4">
